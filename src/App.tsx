@@ -9,15 +9,9 @@ import CreateQuiz from "./pages/CreateQuiz";
 import CreateProject from "./pages/CreateProject";
 import EditQuiz from "./pages/EditQuiz";
 import Quiz from "./pages/Quiz";
-<<<<<<< HEAD
 import MazeChase from "./pages/maze-chase/MazeChase";
-// import CreateMazeChase from "./pages/maze-chase/CreateMazeChase";
-// import EditMazeChase from "./pages/maze-chase/EditMazeChase";
-=======
-// import MazeChase from "./pages/maze-chase/MazeChase";
 import CreateMazeChase from "./pages/maze-chase/CreateMazeChase";
 import EditMazeChase from "./pages/maze-chase/EditMazeChase";
->>>>>>> 069ed7cfefd1809701ace36db5f762f2fec7a20e
 import ProtectedRoute from "./routes/ProtectedRoutes";
 
 function App() {
@@ -29,10 +23,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/sandbox" element={<Sandbox />} />
         <Route path="/quiz/play/:id" element={<Quiz />} />
-<<<<<<< HEAD
         <Route path="/maze-chase/play/:id" element={<MazeChase />} />
-=======
->>>>>>> 069ed7cfefd1809701ace36db5f762f2fec7a20e
 
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
