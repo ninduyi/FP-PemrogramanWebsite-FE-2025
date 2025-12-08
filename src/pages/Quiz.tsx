@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import * as Progress from "@radix-ui/react-progress";
 import { Typography } from "@/components/ui/typography";
 import { ArrowLeft, Trophy } from "lucide-react";
+import ScoreAPI from "@/api/score";
 
 interface Answer {
   answer_index: number;
@@ -53,6 +54,9 @@ function Quiz() {
     score: number;
     percentage: number;
   } | null>(null);
+
+  const [highestScore, setHighestScore] = useState<number | null>(null);
+  const [submittingScore, setSubmittingScore] = useState(false);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -113,6 +117,38 @@ function Quiz() {
     }
   };
 
+  const submitScoreToDatabase = async (
+    gameId: string,
+    score: number,
+    timeSent?: number,
+  ) => {
+    try {
+      setSubmittingScore(true);
+      await ScoreAPI.submitScore({
+        game_id: gameId,
+        score: score,
+        time_spent: timeSent,
+      });
+      toast.success("Score submitted successfully!");
+    } catch (err) {
+      console.error("Failed to submit score:", err);
+      toast.error("Failed to submit score to database.");
+    } finally {
+      setSubmittingScore(false);
+    }
+  };
+
+  const fetchHighestScore = async (gameId: string) => {
+    try {
+      const response = await ScoreAPI.getHighestScore(gameId);
+      if (response && response.score) {
+        setHighestScore(response.score);
+      }
+    } catch (err) {
+      console.error("Failed to fetch highest score:", err);
+    }
+  };
+
   const submitQuiz = async (finalAnswers?: typeof userAnswers) => {
     try {
       setLoading(true);
@@ -125,6 +161,12 @@ function Quiz() {
 
       // Increment play count for all users (both authenticated and public)
       await addPlayCount(id!);
+
+      // Submit score to database and fetch highest score
+      if (response.data.data.score !== undefined) {
+        await submitScoreToDatabase(id!, response.data.data.score);
+        await fetchHighestScore(id!);
+      }
 
       setFinished(true);
     } catch (err) {
@@ -178,8 +220,13 @@ function Quiz() {
             {correct_answers}/{total_questions}
           </Typography>
           <Typography variant="p">
-            Score: {score} / {max_score}
+            Current Score: {score} / {max_score}
           </Typography>
+          {highestScore !== null && highestScore > 0 && (
+            <Typography variant="p" className="text-sm text-gray-600">
+              Your Best Score: {highestScore} / {max_score}
+            </Typography>
+          )}
           <Typography variant="p">{percentage}% Accuracy</Typography>
           <div className="flex justify-center gap-1 text-yellow-400 text-xl">
             {Array.from({ length: fullStars }).map((_, i) => (
@@ -200,7 +247,9 @@ function Quiz() {
               setCurrentQuestion(0);
               setSelectedAnswer(null);
               setUserAnswers([]);
+              setHighestScore(null);
             }}
+            disabled={submittingScore}
           >
             Play Again
           </Button>
@@ -209,6 +258,7 @@ function Quiz() {
             variant="outline"
             className="w-full"
             onClick={() => navigate("/")}
+            disabled={submittingScore}
           >
             Exit
           </Button>

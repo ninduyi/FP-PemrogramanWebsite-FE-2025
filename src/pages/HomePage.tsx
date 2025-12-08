@@ -185,7 +185,11 @@ export default function HomePage() {
 
   const GameCard = ({ game }: { game: Game }) => {
     const handlePlayGame = () => {
-      window.location.href = `/quiz/play/${game.id}`;
+      // Route based on game_template
+      const route = game.game_template === "Quiz" 
+        ? `/quiz/play/${game.id}` 
+        : `/group-sort/play/${game.id}`;
+      window.location.href = route;
     };
 
     return (

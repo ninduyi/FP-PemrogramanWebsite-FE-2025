@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "@/api/axios";
+import ScoreAPI from "@/api/score";
 
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/ui/layout/Navbar";
@@ -23,7 +24,7 @@ import thumbnailPlaceholder from "../assets/images/thumbnail-placeholder.png";
 import iconPlus from "../assets/images/icon-plus.svg";
 import iconSearch from "../assets/images/icon-search.svg";
 import iconFolderLarge from "../assets/images/icon-folder-large.svg";
-import { EyeOff, Eye, Edit, Trash2, Play } from "lucide-react";
+import { EyeOff, Eye, Edit, Trash2, Play, Trophy, Lightbulb } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Project = {
@@ -32,12 +33,17 @@ type Project = {
   description: string;
   thumbnail_image: string | null;
   is_published: boolean;
-  game_template: number;
+  game_template: string;
+};
+
+type ProjectWithStats = Project & {
+  highestScore?: number;
+  hints?: string[];
 };
 
 export default function MyProjectsPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +52,50 @@ export default function MyProjectsPage() {
       try {
         setLoading(true);
         const response = await api.get("/api/auth/me/game");
-        setProjects(response.data.data);
+        const projectsData = response.data.data as Project[];
+
+        // Fetch highest scores and extract hints for each project
+        const projectsWithStats = await Promise.all(
+          projectsData.map(async (project) => {
+            let highestScore: number | undefined;
+            let hints: string[] = [];
+
+            try {
+              // Fetch highest score
+              const scoreData = await ScoreAPI.getHighestScore(project.id);
+if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
+  highestScore = (scoreData as any).score;  // ✅ Safe access
+}
+            } catch (err) {
+              console.log(`No score data for ${project.id}`);
+            }
+
+            // Extract hints from game_json if it's GroupSort
+            if (project.game_template === "GroupSort") {
+              try {
+                // game_json structure: { categories: [{ items: [{ hint?: string }] }] }
+                const gameJson = (response.data.data as any[]).find(p => p.id === project.id)?.game_json;
+                if (gameJson && gameJson.categories) {
+                  const allHints = gameJson.categories
+                    .flatMap((cat: any) => cat.items || [])
+                    .map((item: any) => item.hint)
+                    .filter((h: any) => h && h.trim() !== "");
+                  hints = allHints as string[];
+                }
+              } catch (err) {
+                console.log(`Could not extract hints for ${project.id}`);
+              }
+            }
+
+            return {
+              ...project,
+              highestScore,
+              hints,
+            };
+          })
+        );
+
+        setProjects(projectsWithStats);
       } catch (err) {
         setError("Failed to fetch projects. Please try again later.");
         console.error(err);
@@ -57,9 +106,12 @@ export default function MyProjectsPage() {
     fetchProjects();
   }, []);
 
-  const handleDeleteProject = async (projectId: string) => {
+  const handleDeleteProject = async (projectId: string, gameTemplate: string) => {
     try {
-      await api.delete(`/api/game/game-type/quiz/${projectId}`);
+      const endpoint = gameTemplate === "Quiz" 
+        ? `/api/game/game-type/quiz/${projectId}` 
+        : `/api/game/game-type/group-sort/${projectId}`;
+      await api.delete(endpoint);
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
       toast.success("Project deleted successfully!");
     } catch (err) {
@@ -68,12 +120,15 @@ export default function MyProjectsPage() {
     }
   };
 
-  const handleUpdateStatus = async (gameId: string, isPublish: boolean) => {
+  const handleUpdateStatus = async (gameId: string, isPublish: boolean, gameTemplate: string) => {
     try {
       const form = new FormData();
       form.append("is_publish", String(isPublish));
 
-      await api.patch(`/api/game/game-type/quiz/${gameId}`, form);
+      const endpoint = gameTemplate === "Quiz" 
+        ? `/api/game/game-type/quiz/${gameId}` 
+        : `/api/game/game-type/group-sort/${gameId}`;
+      await api.patch(endpoint, form);
 
       setProjects((prev) =>
         prev.map((p) =>
@@ -178,26 +233,65 @@ export default function MyProjectsPage() {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Highest Score Display */}
+                {project.highestScore !== undefined && (
+                  <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 p-2 rounded">
+                    <Trophy className="w-4 h-4 text-yellow-600" />
+                    <Typography variant="small" className="text-yellow-800 font-semibold">
+                      Highest Score: {project.highestScore}
+                    </Typography>
+                  </div>
+                )}
+
+                {/* Hints Display */}
+                {project.hints && project.hints.length > 0 && (
+                  <div className="bg-blue-50 p-2 rounded">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Lightbulb className="w-4 h-4 text-blue-600" />
+                      <Typography variant="small" className="text-blue-900 font-semibold">
+                        Hints ({project.hints.length})
+                      </Typography>
+                    </div>
+                    <div className="space-y-1">
+                      {project.hints.slice(0, 2).map((hint, idx) => (
+                        <Typography key={idx} variant="small" className="text-blue-800 text-xs line-clamp-1">
+                          • {hint}
+                        </Typography>
+                      ))}
+                      {project.hints.length > 2 && (
+                        <Typography variant="small" className="text-blue-700 text-xs italic">
+                          +{project.hints.length - 2} more hints
+                        </Typography>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-2 mt-6 md:mt-2">
-                  {project.is_published ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7"
-                      onClick={() => {
-                        navigate(`/quiz/play/${project.id}`);
-                      }}
-                    >
-                      <Play />
-                      Play
-                    </Button>
-                  ) : null}
                   <Button
                     variant="outline"
                     size="sm"
                     className="h-7"
                     onClick={() => {
-                      navigate(`/quiz/edit/${project.id}`);
+                      const playRoute = project.game_template === "Quiz"
+                        ? `/quiz/play/${project.id}`
+                        : `/group-sort/play/${project.id}`;
+                      navigate(playRoute);
+                    }}
+                  >
+                    <Play />
+                    {project.is_published ? "Play" : "Test"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={() => {
+                      const editRoute = project.game_template === "Quiz"
+                        ? `/quiz/edit/${project.id}`
+                        : `/group-sort/edit/${project.id}`;
+                      navigate(editRoute);
                     }}
                   >
                     <Edit />
@@ -209,7 +303,7 @@ export default function MyProjectsPage() {
                       size="sm"
                       className="h-7"
                       onClick={() => {
-                        handleUpdateStatus(project.id, false);
+                        handleUpdateStatus(project.id, false, project.game_template);
                       }}
                     >
                       <EyeOff />
@@ -221,7 +315,7 @@ export default function MyProjectsPage() {
                       size="sm"
                       className="h-7"
                       onClick={() => {
-                        handleUpdateStatus(project.id, true);
+                        handleUpdateStatus(project.id, true, project.game_template);
                       }}
                     >
                       <Eye />
@@ -255,7 +349,7 @@ export default function MyProjectsPage() {
                         <AlertDialogAction
                           className="bg-red-600 hover:bg-red-700"
                           onClick={() => {
-                            handleDeleteProject(project.id);
+                            handleDeleteProject(project.id, project.game_template);
                           }}
                         >
                           Yes, Delete
