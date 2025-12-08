@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
-
-// Types
+import { useEffect, useMemo, useState } from "react";
+import backsoundOne from "../../../assets/game/speed-sorting/backsounds/a-lost-soul.mp3";
+import backsoundTwo from "../../../assets/game/speed-sorting/backsounds/no-worries.mp3";
+import backsoundThree from "../../../assets/game/speed-sorting/backsounds/searching-for-a-body.mp3";
+import backsoundFour from "../../../assets/game/speed-sorting/backsounds/something-wrong.mp3";
+import correctEffect from "../../../assets/game/speed-sorting/effects/correct-effect.mp3";
+import countdownEffect from "../../../assets/game/speed-sorting/effects/countdown-effect.mp3";
+import failedEffect from "../../../assets/game/speed-sorting/effects/failed-effect.mp3";
+import gameStartEffect from "../../../assets/game/speed-sorting/effects/gamestart-effect.mp3";
+import victoryEffect from "../../../assets/game/speed-sorting/effects/victory-effect.mp3";
 export interface WordItem {
   id: string;
   text: string;
@@ -84,17 +91,13 @@ const transformDataToGameFormat = (
   }));
 
   const words: WordItem[] = detail.items.map((item) => {
-    // Handle both category_index and direct category_id approaches
     let correctCategoryId = "";
 
     if (typeof item.category_index === "number" && item.category_index >= 0) {
-      // Use category_index if it's a valid number
       correctCategoryId = detail.categories[item.category_index]?.id || "";
     } else if (item.category_id) {
-      // Fallback to category_id if category_index is not available
       correctCategoryId = item.category_id;
     } else {
-      // Last resort: use first category as default
       correctCategoryId = detail.categories[0]?.id || "";
     }
 
@@ -123,6 +126,41 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
   const [words, setWords] = useState<WordItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [score, setScore] = useState(0);
+  const correctAudio = useMemo(() => {
+    const audio = new Audio(correctEffect);
+    audio.volume = 0.2;
+    return audio;
+  }, []);
+  const failedAudio = useMemo(() => {
+    const audio = new Audio(failedEffect);
+    audio.volume = 0.2;
+    return audio;
+  }, []);
+  const startAudio = useMemo(() => {
+    const audio = new Audio(gameStartEffect);
+    audio.volume = 0.1;
+    return audio;
+  }, []);
+  const countdownAudio = useMemo(() => {
+    const audio = new Audio(countdownEffect);
+    audio.volume = 0.35;
+    return audio;
+  }, []);
+  const victoryAudio = useMemo(() => {
+    const audio = new Audio(victoryEffect);
+    audio.volume = 0.4;
+    return audio;
+  }, []);
+  const backsounds = useMemo(() => {
+    return [backsoundOne, backsoundTwo, backsoundThree, backsoundFour].map(
+      (src) => {
+        const audio = new Audio(src);
+        audio.volume = 1;
+        audio.loop = true;
+        return audio;
+      },
+    );
+  }, []);
 
   useEffect(() => {
     if (detail) {
@@ -159,23 +197,52 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
     }
   }, [completedWords, totalWords, timer, gameEnded]);
 
+  useEffect(() => {
+    if (gameEnded) {
+      victoryAudio.currentTime = 0;
+      void victoryAudio.play().catch(() => {});
+    }
+  }, [gameEnded, victoryAudio]);
+
+  useEffect(() => {
+    if (gameEnded) {
+      backsounds.forEach((audio) => audio.pause());
+    }
+  }, [gameEnded, backsounds]);
+
   const startGame = () => {
     setGameState("countdown");
     setCountdown(3);
+    countdownAudio.currentTime = 0;
+    void countdownAudio.play().catch(() => {});
     const interval = setInterval(() => {
       setCountdown((prev) => {
+        const nextVal = prev - 1;
+        if (nextVal > 0) {
+          countdownAudio.currentTime = 0;
+          void countdownAudio.play().catch(() => {});
+        }
         if (prev <= 1) {
           clearInterval(interval);
+          startAudio.currentTime = 0;
+          void startAudio.play().catch(() => {});
+          const nextIndex = Math.floor(Math.random() * backsounds.length);
+          backsounds.forEach((audio, idx) => {
+            if (idx === nextIndex) return;
+            audio.pause();
+          });
+          const chosen = backsounds[nextIndex];
+          chosen.currentTime = 0;
+          void chosen.play().catch(() => {});
           setGameState("playing");
           return 0;
         }
-        return prev - 1;
+        return nextVal;
       });
     }, 1000);
   };
 
   const resetGame = () => {
-    // Get fresh game data
     const freshGameData = transformDataToGameFormat(detail);
     setWords(freshGameData.words.map((w) => ({ ...w, completed: false })));
     setCategories(freshGameData.categories);
@@ -189,6 +256,7 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
     setDraggedItem(null);
     setHoveredCategory(null);
     setDropFeedback(null);
+    backsounds.forEach((audio) => audio.pause());
   };
 
   const handleDragStart = (
@@ -230,6 +298,11 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
     }
   };
 
+  const playAudio = (audio: HTMLAudioElement) => {
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+  };
+
   const handleDrop = (
     e: React.DragEvent<HTMLDivElement>,
     categoryId: string,
@@ -244,6 +317,12 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
     const isCorrect = draggedWord.correctCategory === categoryId;
 
     setDropFeedback({ categoryId, isCorrect });
+
+    if (isCorrect) {
+      playAudio(correctAudio);
+    } else {
+      playAudio(failedAudio);
+    }
 
     if (isCorrect) {
       setTimeout(() => {
@@ -265,6 +344,12 @@ export function useSpeedSortingGame(detail: SpeedSortingDetail | null = null) {
       setDropFeedback(null);
     }, 600);
   };
+
+  useEffect(() => {
+    return () => {
+      backsounds.forEach((audio) => audio.pause());
+    };
+  }, [backsounds]);
 
   return {
     // State
