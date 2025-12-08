@@ -35,7 +35,6 @@ function CreateTypeTheAnswer() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
-  const [backgroundImage, setBackgroundImage] = useState<File | null>(null);
 
   const [questions, setQuestions] = useState<Question[]>([
     { questionText: "", correctAnswer: "" },
@@ -80,7 +79,6 @@ function CreateTypeTheAnswer() {
       title,
       description,
       thumbnail,
-      backgroundImage,
       questions,
       settings: { ...settings, isPublishImmediately: publish },
     };
@@ -109,9 +107,6 @@ function CreateTypeTheAnswer() {
         formData.append("description", parseResult.data.description);
       }
       formData.append("thumbnail_image", parseResult.data.thumbnail);
-      if (parseResult.data.backgroundImage) {
-        formData.append("background_image", parseResult.data.backgroundImage);
-      }
       formData.append("is_published", String(publish));
       formData.append(
         "time_limit_seconds",
@@ -168,7 +163,7 @@ function CreateTypeTheAnswer() {
           "Backend API not found. Please make sure backend is running and endpoint exists.";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
-      } else if (err.message) {
+      } else if (err instanceof Error && err.message) {
         errorMessage = err.message;
       }
 
@@ -278,20 +273,6 @@ function CreateTypeTheAnswer() {
             {formErrors.thumbnail && (
               <p className="text-sm text-red-500 mt-1">
                 {formErrors.thumbnail}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Dropzone
-              label="Background Image (Optional)"
-              allowedTypes={["image/png", "image/jpeg", "image/jpg"]}
-              maxSize={5 * 1024 * 1024}
-              onChange={(file) => setBackgroundImage(file)}
-            />
-            {formErrors.backgroundImage && (
-              <p className="text-sm text-red-500 mt-1">
-                {formErrors.backgroundImage}
               </p>
             )}
           </div>

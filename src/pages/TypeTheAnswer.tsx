@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import { Typography } from "@/components/ui/typography";
 import {
@@ -14,10 +14,7 @@ import {
   Timer as TimerIcon,
 } from "lucide-react";
 import * as Progress from "@radix-ui/react-progress";
-import {
-  mockTypeTheAnswerGame,
-  mockCheckAnswers,
-} from "@/mocks/typeTheAnswerMock";
+import { InteractiveBackground } from "@/components/ui/interactive-background";
 
 interface Question {
   question_text: string;
@@ -91,14 +88,6 @@ function TypeTheAnswer() {
       try {
         setLoading(true);
 
-        // Use mock data for testing if ID is "mock-game-123"
-        if (id === "mock-game-123") {
-          setGame(mockTypeTheAnswerGame);
-          setTimeRemaining(mockTypeTheAnswerGame.time_limit_seconds);
-          setLoading(false);
-          return;
-        }
-
         const response = await api.get(
           `/api/game/game-type/type-the-answer/${id}/play/public`,
         );
@@ -116,10 +105,10 @@ function TypeTheAnswer() {
     if (id) fetchGame();
   }, [id]);
 
-  const handleTimeUp = () => {
+  const handleTimeUp = useCallback(() => {
     toast.error("Time's up!");
     submitGame(userAnswers);
-  };
+  }, [userAnswers]);
 
   // Timer logic
   useEffect(() => {
@@ -195,10 +184,8 @@ function TypeTheAnswer() {
       if (!confirm) return;
     }
 
-    // Add play count when exiting (skip for mock data)
-    if (id !== "mock-game-123") {
-      await addPlayCount(id!);
-    }
+    // Add play count when exiting
+    await addPlayCount(id!);
     navigate("/");
   };
 
@@ -215,37 +202,23 @@ function TypeTheAnswer() {
   const submitGame = async (finalAnswers: typeof userAnswers) => {
     try {
       setLoading(true);
-      setGameStarted(false);
 
       // Calculate completion time
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       setCompletionTime(timeSpent);
 
-      // Use mock checking for testing if ID is "mock-game-123"
-      if (id === "mock-game-123") {
-        const mockResult = mockCheckAnswers(finalAnswers);
-        setResult(mockResult);
-
-        // Fetch mock leaderboard
-        await fetchLeaderboard(mockResult.score, timeSpent);
-
-        setFinished(true);
-        setLoading(false);
-        return;
-      }
-
       const response = await api.post(
         `/api/game/game-type/type-the-answer/${id}/check`,
         {
           answers: finalAnswers,
+          completion_time: timeSpent,
         },
       );
 
       setResult(response.data.data);
-      await addPlayCount(id!);
 
-      // Fetch real leaderboard
-      await fetchLeaderboard(response.data.data.score, timeSpent);
+      // Fetch leaderboard and add play count in parallel
+      await Promise.all([addPlayCount(id!), fetchLeaderboard()]);
 
       setFinished(true);
     } catch (err) {
@@ -257,64 +230,16 @@ function TypeTheAnswer() {
     }
   };
 
-  const fetchLeaderboard = async (playerScore: number, playerTime: number) => {
+  const fetchLeaderboard = async () => {
     try {
-      // For mock game, use mock leaderboard
-      if (id === "mock-game-123") {
-        const mockLeaderboard = [
-          {
-            player_name: "You",
-            score: playerScore,
-            completion_time: playerTime,
-            percentage: Math.round(
-              (playerScore /
-                (game!.score_per_question * game!.questions.length)) *
-                100,
-            ),
-          },
-          {
-            player_name: "Alice",
-            score: 50,
-            completion_time: 120,
-            percentage: 100,
-          },
-          {
-            player_name: "Bob",
-            score: 40,
-            completion_time: 150,
-            percentage: 80,
-          },
-          {
-            player_name: "Charlie",
-            score: 30,
-            completion_time: 160,
-            percentage: 60,
-          },
-          {
-            player_name: "Diana",
-            score: 20,
-            completion_time: 170,
-            percentage: 40,
-          },
-        ];
-
-        // Sort by score (desc), then by time (asc)
-        mockLeaderboard.sort((a, b) => {
-          if (b.score === a.score) {
-            return a.completion_time - b.completion_time;
-          }
-          return b.score - a.score;
-        });
-
-        setLeaderboard(mockLeaderboard.slice(0, 5));
-        return;
-      }
-
-      // Real API call for leaderboard
+      // Fetch leaderboard from API
       const response = await api.get(
         `/api/game/game-type/type-the-answer/${id}/leaderboard`,
       );
-      setLeaderboard(response.data.data);
+      console.log("Leaderboard response:", response.data);
+      const leaderboardData = response.data.data || [];
+      console.log("Leaderboard data:", leaderboardData);
+      setLeaderboard(leaderboardData);
     } catch (err) {
       console.error("Failed to fetch leaderboard:", err);
       // Don't show error toast, leaderboard is optional
@@ -323,23 +248,33 @@ function TypeTheAnswer() {
 
   if (loading && !game) {
     return (
-      <div className="w-full h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-      </div>
+      <>
+        <InteractiveBackground variant="purple" />
+        <div className="w-full h-screen flex justify-center items-center relative z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-300 border-t-transparent"></div>
+        </div>
+      </>
     );
   }
 
   if (error || !game) {
     return (
-      <div className="w-full h-screen flex flex-col justify-center items-center gap-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Typography variant="h3" className="text-red-500">
-          {error ?? "Game not found"}
-        </Typography>
-        <Button onClick={() => navigate("/")} variant="outline">
-          <ArrowLeft className="mr-2" size={16} />
-          Back to Home
-        </Button>
-      </div>
+      <>
+        <InteractiveBackground variant="purple" />
+        <div className="w-full h-screen flex flex-col justify-center items-center gap-4 relative z-10">
+          <Typography variant="h3" className="text-red-300">
+            {error ?? "Game not found"}
+          </Typography>
+          <Button
+            onClick={() => navigate("/")}
+            variant="outline"
+            className="bg-white/90 hover:bg-white"
+          >
+            <ArrowLeft className="mr-2" size={16} />
+            Back to Home
+          </Button>
+        </div>
+      </>
     );
   }
 
@@ -365,354 +300,363 @@ function TypeTheAnswer() {
     else feedback = "Keep practicing! 📚";
 
     return (
-      <div className="w-full min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="bg-white rounded-2xl p-8 md:p-12 text-center max-w-md w-full space-y-6 shadow-2xl">
-          <Trophy className="mx-auto text-yellow-500" size={80} />
-          <Typography variant="h2" className="text-indigo-600">
-            {feedback}
-          </Typography>
-          <div className="space-y-2">
-            <Typography variant="h1" className="text-5xl font-bold">
-              {correct_answers}/{total_questions}
+      <>
+        <InteractiveBackground variant="gradient" />
+        <div className="w-full min-h-screen flex justify-center items-center relative z-10 p-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 md:p-12 text-center max-w-md w-full space-y-6 shadow-2xl border border-purple-200">
+            <Trophy className="mx-auto text-yellow-500" size={80} />
+            <Typography variant="h2" className="text-indigo-600">
+              {feedback}
             </Typography>
-            <Typography variant="p" className="text-gray-600">
-              Correct Answers
-            </Typography>
-          </div>
-          <div className="bg-indigo-50 p-4 rounded-lg space-y-1">
-            <Typography variant="h4" className="text-indigo-700">
-              Score: {score} / {max_score}
-            </Typography>
-            <Typography variant="p" className="text-gray-600">
-              {percentage}% Accuracy
-            </Typography>
-          </div>
-          <div className="flex justify-center gap-1 text-4xl">
-            {Array.from({ length: fullStars }).map((_, i) => (
-              <span key={`full-${i}`} className="text-yellow-500">
-                ★
-              </span>
-            ))}
-            {halfStar && <span className="text-yellow-500">☆</span>}
-            {Array.from({ length: emptyStars }).map((_, i) => (
-              <span key={`empty-${i}`} className="text-gray-300">
-                ★
-              </span>
-            ))}
-          </div>
+            <div className="space-y-2">
+              <Typography variant="h1" className="text-5xl font-bold">
+                {correct_answers}/{total_questions}
+              </Typography>
+              <Typography variant="p" className="text-gray-600">
+                Correct Answers
+              </Typography>
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-lg space-y-1">
+              <Typography variant="h4" className="text-indigo-700">
+                Score: {score} / {max_score}
+              </Typography>
+              <Typography variant="p" className="text-gray-600">
+                {percentage}% Accuracy
+              </Typography>
+            </div>
+            <div className="flex justify-center gap-1 text-4xl">
+              {Array.from({ length: fullStars }).map((_, i) => (
+                <span key={`full-${i}`} className="text-yellow-500">
+                  ★
+                </span>
+              ))}
+              {halfStar && <span className="text-yellow-500">☆</span>}
+              {Array.from({ length: emptyStars }).map((_, i) => (
+                <span key={`empty-${i}`} className="text-gray-300">
+                  ★
+                </span>
+              ))}
+            </div>
 
-          {/* Completion Time */}
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <Typography variant="small" className="text-gray-600">
-              Completion Time
-            </Typography>
-            <Typography variant="h4" className="text-blue-700">
-              {Math.floor(completionTime / 60)}m {completionTime % 60}s
-            </Typography>
-          </div>
+            {/* Completion Time */}
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <Typography variant="small" className="text-gray-600">
+                Completion Time
+              </Typography>
+              <Typography variant="h4" className="text-blue-700">
+                {Math.floor(completionTime / 60)}m {completionTime % 60}s
+              </Typography>
+            </div>
 
-          {/* Leaderboard */}
-          {leaderboard.length > 0 && (
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl space-y-4 border-2 border-indigo-200">
-              <div className="flex items-center justify-center gap-2">
-                <Trophy className="text-indigo-600" size={24} />
-                <Typography variant="h3" className="text-indigo-700">
-                  Leaderboard
-                </Typography>
-              </div>
-              <div className="space-y-2">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-all ${
-                      entry.player_name === "You"
-                        ? "bg-yellow-100 border-2 border-yellow-400 shadow-md scale-105"
-                        : "bg-white border border-indigo-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xl font-bold ${
-                          index === 0
-                            ? "text-yellow-500"
-                            : index === 1
-                              ? "text-gray-400"
-                              : index === 2
-                                ? "text-orange-600"
-                                : "text-gray-500"
-                        }`}
-                      >
-                        {index === 0
-                          ? "🥇"
-                          : index === 1
-                            ? "🥈"
-                            : index === 2
-                              ? "🥉"
-                              : `#${index + 1}`}
-                      </span>
-                      <div className="text-left">
-                        <Typography
-                          variant="small"
-                          className={`font-semibold ${
-                            entry.player_name === "You"
-                              ? "text-indigo-700"
-                              : "text-gray-700"
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl space-y-4 border-2 border-indigo-200">
+                <div className="flex items-center justify-center gap-2">
+                  <Trophy className="text-indigo-600" size={24} />
+                  <Typography variant="h3" className="text-indigo-700">
+                    Leaderboard
+                  </Typography>
+                </div>
+                <div className="space-y-2">
+                  {leaderboard.map((entry, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center justify-between p-3 rounded-lg transition-all ${
+                        entry.player_name === "You"
+                          ? "bg-yellow-100 border-2 border-yellow-400 shadow-md scale-105"
+                          : "bg-white border border-indigo-100"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`text-xl font-bold ${
+                            index === 0
+                              ? "text-yellow-500"
+                              : index === 1
+                                ? "text-gray-400"
+                                : index === 2
+                                  ? "text-orange-600"
+                                  : "text-gray-500"
                           }`}
                         >
-                          {entry.player_name}
+                          {index === 0
+                            ? "🥇"
+                            : index === 1
+                              ? "🥈"
+                              : index === 2
+                                ? "🥉"
+                                : `#${index + 1}`}
+                        </span>
+                        <div className="text-left">
+                          <Typography
+                            variant="small"
+                            className={`font-semibold ${
+                              entry.player_name === "You"
+                                ? "text-indigo-700"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {entry.player_name}
+                          </Typography>
+                          <Typography
+                            variant="small"
+                            className="text-gray-500 text-xs"
+                          >
+                            {Math.floor(entry.completion_time / 60)}m{" "}
+                            {entry.completion_time % 60}s
+                          </Typography>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Typography
+                          variant="small"
+                          className="font-bold text-indigo-700"
+                        >
+                          {entry.score} pts
                         </Typography>
                         <Typography
                           variant="small"
                           className="text-gray-500 text-xs"
                         >
-                          {Math.floor(entry.completion_time / 60)}m{" "}
-                          {entry.completion_time % 60}s
+                          {entry.percentage}%
                         </Typography>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Typography
-                        variant="small"
-                        className="font-bold text-indigo-700"
-                      >
-                        {entry.score} pts
-                      </Typography>
-                      <Typography
-                        variant="small"
-                        className="text-gray-500 text-xs"
-                      >
-                        {entry.percentage}%
-                      </Typography>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="flex flex-col gap-3 pt-4">
-            <Button
-              className="w-full bg-indigo-600 hover:bg-indigo-700"
-              onClick={() => {
-                setFinished(false);
-                setResult(null);
-                setCurrentQuestion(0);
-                setUserAnswers([]);
-                setUserAnswer("");
-                setTimeRemaining(game.time_limit_seconds);
-                setGameStarted(false);
-                setLeaderboard([]);
-                setCompletionTime(0);
-              }}
-            >
-              Play Again
-            </Button>
-            <Button className="w-full" variant="outline" onClick={handleExit}>
-              <ArrowLeft className="mr-2" size={16} />
-              Back to Home
-            </Button>
+            <div className="flex flex-col gap-3 pt-4">
+              <Button
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => {
+                  setFinished(false);
+                  setResult(null);
+                  setCurrentQuestion(0);
+                  setUserAnswers([]);
+                  setUserAnswer("");
+                  setTimeRemaining(game.time_limit_seconds);
+                  setGameStarted(false);
+                  setLeaderboard([]);
+                  setCompletionTime(0);
+                }}
+              >
+                Play Again
+              </Button>
+              <Button className="w-full" variant="outline" onClick={handleExit}>
+                <ArrowLeft className="mr-2" size={16} />
+                Back to Home
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Start Screen
   if (!gameStarted) {
     return (
-      <div className="w-full min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="bg-white rounded-2xl p-8 md:p-12 text-center max-w-lg w-full space-y-6 shadow-2xl">
-          {game.thumbnail_image && (
-            <img
-              src={game.thumbnail_image}
-              alt={game.name}
-              className="w-full h-48 object-cover rounded-lg"
-            />
-          )}
-          <Typography variant="h1" className="text-indigo-600">
-            {game.name}
-          </Typography>
-          <Typography variant="p" className="text-gray-600">
-            {game.description}
-          </Typography>
-          <div className="bg-indigo-50 p-4 rounded-lg space-y-2 text-left">
-            <div className="flex justify-between">
-              <span className="text-gray-700">Questions:</span>
-              <span className="font-semibold">{questions.length}</span>
+      <>
+        <InteractiveBackground variant="purple" />
+        <div className="w-full min-h-screen flex justify-center items-center relative z-10 p-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 md:p-12 text-center max-w-lg w-full space-y-6 shadow-2xl border border-purple-200">
+            {game.thumbnail_image && (
+              <img
+                src={`${import.meta.env.VITE_API_URL}/${game.thumbnail_image}`}
+                alt={game.name}
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            )}
+            <Typography variant="h1" className="text-indigo-600">
+              {game.name}
+            </Typography>
+            <Typography variant="p" className="text-gray-600">
+              {game.description}
+            </Typography>
+            <div className="bg-indigo-50 p-4 rounded-lg space-y-2 text-left">
+              <div className="flex justify-between">
+                <span className="text-gray-700">Questions:</span>
+                <span className="font-semibold">{questions.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Time Limit:</span>
+                <span className="font-semibold">
+                  {Math.floor(game.time_limit_seconds / 60)}:
+                  {String(game.time_limit_seconds % 60).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Points per Question:</span>
+                <span className="font-semibold">{game.score_per_question}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-700">Time Limit:</span>
-              <span className="font-semibold">
-                {Math.floor(game.time_limit_seconds / 60)}:
-                {String(game.time_limit_seconds % 60).padStart(2, "0")}
-              </span>
+            <div className="flex flex-col gap-3">
+              <Button
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6"
+                onClick={startGame}
+              >
+                Start Game
+              </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => navigate("/")}
+              >
+                <ArrowLeft className="mr-2" size={16} />
+                Back to Home
+              </Button>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-700">Points per Question:</span>
-              <span className="font-semibold">{game.score_per_question}</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-            <Button
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6"
-              onClick={startGame}
-            >
-              Start Game
-            </Button>
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="mr-2" size={16} />
-              Back to Home
-            </Button>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Game Screen
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-3xl mx-auto py-8">
-        {/* Header with Timer and Controls */}
-        <div className="bg-white rounded-xl p-4 mb-6 shadow-lg">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
-              <TimerIcon className="text-indigo-600" size={24} />
-              <Typography variant="h3" className="text-indigo-600">
-                {Math.floor(timeRemaining / 60)}:
-                {String(timeRemaining % 60).padStart(2, "0")}
-              </Typography>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={togglePause}
-                className="flex items-center gap-1"
-              >
-                {isPaused ? (
-                  <>
-                    <Play size={16} /> Resume
-                  </>
-                ) : (
-                  <>
-                    <Pause size={16} /> Pause
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleExit}
-                className="flex items-center gap-1"
-              >
-                <X size={16} /> Exit
-              </Button>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>
-                Question {currentQuestion + 1} of {questions.length}
-              </span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <Progress.Root
-              className="relative overflow-hidden bg-gray-200 rounded-full w-full h-3"
-              value={progress}
-            >
-              <Progress.Indicator
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300 ease-in-out"
-                style={{ width: `${progress}%` }}
-              />
-            </Progress.Root>
-          </div>
-        </div>
-
-        {/* Question Card */}
-        <div className="bg-white rounded-xl p-8 shadow-lg space-y-6">
-          {isPaused ? (
-            <div className="text-center py-16">
-              <Pause className="mx-auto text-gray-400 mb-4" size={64} />
-              <Typography variant="h3" className="text-gray-600">
-                Game Paused
-              </Typography>
-              <Typography variant="p" className="text-gray-500 mt-2">
-                Click Resume to continue
-              </Typography>
-            </div>
-          ) : (
-            <>
-              <div>
-                <Typography variant="h4" className="text-gray-500 mb-2">
-                  Question {currentQ.question_index}
-                </Typography>
-                <Typography variant="h2" className="text-gray-800">
-                  {currentQ.question_text}
+    <>
+      <InteractiveBackground variant="gradient" />
+      <div className="w-full min-h-screen relative z-10 p-4">
+        <div className="max-w-3xl mx-auto py-8">
+          {/* Header with Timer and Controls */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-4 mb-6 shadow-lg border border-purple-200">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <TimerIcon className="text-indigo-600" size={24} />
+                <Typography variant="h3" className="text-indigo-600">
+                  {Math.floor(timeRemaining / 60)}:
+                  {String(timeRemaining % 60).padStart(2, "0")}
                 </Typography>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={togglePause}
+                  className="flex items-center gap-1"
+                >
+                  {isPaused ? (
+                    <>
+                      <Play size={16} /> Resume
+                    </>
+                  ) : (
+                    <>
+                      <Pause size={16} /> Pause
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleExit}
+                  className="flex items-center gap-1"
+                >
+                  <X size={16} /> Exit
+                </Button>
+              </div>
+            </div>
 
-              <div className="space-y-3">
-                <Typography variant="p" className="text-gray-600">
-                  Type your answer below:
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>
+                  Question {currentQuestion + 1} of {questions.length}
+                </span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress.Root
+                className="relative overflow-hidden bg-gray-200 rounded-full w-full h-3"
+                value={progress}
+              >
+                <Progress.Indicator
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300 ease-in-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </Progress.Root>
+            </div>
+          </div>
+
+          {/* Question Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl p-8 shadow-lg space-y-6 border border-purple-200">
+            {isPaused ? (
+              <div className="text-center py-16">
+                <Pause className="mx-auto text-gray-400 mb-4" size={64} />
+                <Typography variant="h3" className="text-gray-600">
+                  Game Paused
                 </Typography>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleNext();
-                    }}
-                    placeholder="Enter your answer here..."
-                    className={`w-full text-lg p-4 border-2 rounded-lg transition-all duration-300 ${
-                      answerFeedback === "correct"
-                        ? "border-green-500 bg-green-50 animate-[bounce_0.5s_ease-in-out]"
-                        : answerFeedback === "wrong"
-                          ? "border-red-500 bg-red-50 animate-[shake_0.5s_ease-in-out]"
-                          : "border-indigo-200 focus:border-indigo-500"
-                    }`}
-                    autoFocus
-                    disabled={loading || answerFeedback !== null}
-                  />
-                  {answerFeedback === "correct" && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 text-2xl animate-[bounce_0.5s_ease-in-out]">
-                      ✓
-                    </div>
-                  )}
-                  {answerFeedback === "wrong" && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 text-2xl animate-[shake_0.5s_ease-in-out]">
-                      ✗
-                    </div>
-                  )}
+                <Typography variant="p" className="text-gray-500 mt-2">
+                  Click Resume to continue
+                </Typography>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <Typography variant="h4" className="text-gray-500 mb-2">
+                    Question {currentQ.question_index}
+                  </Typography>
+                  <Typography variant="h2" className="text-gray-800">
+                    {currentQ.question_text}
+                  </Typography>
                 </div>
-                <Typography variant="small" className="text-gray-500">
-                  Press Enter or click Next to submit
-                </Typography>
-              </div>
 
-              <Button
-                onClick={handleNext}
-                disabled={loading || !userAnswer.trim()}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6"
-              >
-                {loading
-                  ? "Submitting..."
-                  : isLastQuestion
-                    ? "Submit"
-                    : "Next Question"}
-              </Button>
-            </>
-          )}
+                <div className="space-y-3">
+                  <Typography variant="p" className="text-gray-600">
+                    Type your answer below:
+                  </Typography>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleNext();
+                      }}
+                      placeholder="Enter your answer here..."
+                      className={`w-full text-lg p-4 border-2 rounded-lg transition-all duration-300 ${
+                        answerFeedback === "correct"
+                          ? "border-green-500 bg-green-50 animate-[bounce_0.5s_ease-in-out]"
+                          : answerFeedback === "wrong"
+                            ? "border-red-500 bg-red-50 animate-[shake_0.5s_ease-in-out]"
+                            : "border-indigo-200 focus:border-indigo-500"
+                      }`}
+                      autoFocus
+                      disabled={loading || answerFeedback !== null}
+                    />
+                    {answerFeedback === "correct" && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 text-2xl animate-[bounce_0.5s_ease-in-out]">
+                        ✓
+                      </div>
+                    )}
+                    {answerFeedback === "wrong" && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-600 text-2xl animate-[shake_0.5s_ease-in-out]">
+                        ✗
+                      </div>
+                    )}
+                  </div>
+                  <Typography variant="small" className="text-gray-500">
+                    Press Enter or click Next to submit
+                  </Typography>
+                </div>
+
+                <Button
+                  onClick={handleNext}
+                  disabled={loading || !userAnswer.trim()}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-lg py-6"
+                >
+                  {loading
+                    ? "Submitting..."
+                    : isLastQuestion
+                      ? "Submit"
+                      : "Next Question"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

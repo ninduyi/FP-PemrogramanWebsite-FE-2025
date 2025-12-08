@@ -3,8 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import { Input } from "@/components/ui/input";
-import { typeTheAnswerSchema } from "@/validation/typeTheAnswerSchema";
-import { TextareaField } from "@/components/ui/textarea-field";
+import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import Dropzone from "@/components/ui/dropzone";
 import { Typography } from "@/components/ui/typography";
@@ -38,17 +37,14 @@ function EditTypeTheAnswer() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [formErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [backgroundImage, setBackgroundImage] = useState<File | null>(null);
-  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(
-    null,
-  );
 
   const [questions, setQuestions] = useState<Question[]>([
     { questionText: "", correctAnswer: "" },
@@ -64,39 +60,79 @@ function EditTypeTheAnswer() {
     const fetchGame = async () => {
       try {
         setLoading(true);
+        console.log("Fetching game with ID:", id);
         const response = await api.get(
           `/api/game/game-type/type-the-answer/${id}`,
         );
+        console.log("Game data response:", response.data);
         const data = response.data.data;
 
-        setTitle(data.name);
-        setDescription(data.description || "");
-        setThumbnailUrl(data.thumbnail_image);
-        setBackgroundImageUrl(data.background_image);
-        setSettings({
-          isPublishImmediately: data.is_published,
-          timeLimitSeconds: data.time_limit_seconds,
-          scorePerQuestion: data.score_per_question,
+        if (!data) {
+          throw new Error("No data received from server");
+        }
+
+        console.log("Setting form values:", {
+          name: data.name,
+          description: data.description,
+          thumbnail: data.thumbnail_image,
+          questions: data.questions,
+          settings: {
+            isPublished: data.is_published,
+            timeLimitSeconds: data.time_limit_seconds,
+            scorePerQuestion: data.score_per_question,
+          },
         });
-        setQuestions(
-          data.questions.map(
-            (q: { question_text: string; correct_answer: string }) => ({
-              questionText: q.question_text,
-              correctAnswer: q.correct_answer,
-            }),
-          ),
+
+        setTitle(data.name || "");
+        setDescription(data.description || "");
+        setThumbnailUrl(data.thumbnail_image || null);
+        setSettings({
+          isPublishImmediately: data.is_published || false,
+          timeLimitSeconds: data.time_limit_seconds || 180,
+          scorePerQuestion: data.score_per_question || 10,
+        });
+
+        if (data.questions && data.questions.length > 0) {
+          setQuestions(
+            data.questions.map(
+              (q: { question_text: string; correct_answer: string }) => ({
+                questionText: q.question_text || "",
+                correctAnswer: q.correct_answer || "",
+              }),
+            ),
+          );
+        }
+
+        console.log("Game data loaded successfully");
+        console.log(
+          "Final state - Title:",
+          data.name,
+          "Questions:",
+          data.questions?.length,
         );
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Failed to fetch game:", err);
-        toast.error("Failed to load game data");
-        navigate("/my-projects");
+        console.error("Error response:", err.response);
+        const errorMsg =
+          err.response?.data?.message || "Failed to load game data";
+        toast.error(errorMsg);
+        setError(`Error: ${errorMsg}`);
+        // Don't navigate away immediately, let user see the error
+        // navigate("/my-projects");
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) fetchGame();
-  }, [id, navigate]);
+    if (id) {
+      console.log("Starting to fetch game with ID:", id);
+      fetchGame();
+    } else {
+      console.error("No ID provided");
+      setError("No game ID provided");
+      setLoading(false);
+    }
+  }, [id]);
 
   const addQuestion = () => {
     setQuestions((prev) => [...prev, { questionText: "", correctAnswer: "" }]);
@@ -123,48 +159,38 @@ function EditTypeTheAnswer() {
   };
 
   const handleSubmit = async (publish = false) => {
-    // For edit, thumbnail is optional if already exists
-    const payload = {
-      title,
-      description,
-      thumbnail: thumbnail || new File([], "dummy"), // Dummy if no new file
-      backgroundImage,
-      questions,
-      settings: { ...settings, isPublishImmediately: publish },
-    };
+    console.log("=== Submit Validation ===");
+    console.log("Title:", title);
+    console.log("ThumbnailUrl (existing):", thumbnailUrl);
+    console.log("Thumbnail (new file):", thumbnail);
 
-    // Skip thumbnail validation if not uploading new one
-    if (!thumbnail && thumbnailUrl) {
-      // Manual validation without thumbnail check
-      if (!title || title.length < 3) {
-        toast.error("Title must be at least 3 characters");
+    // Manual validation
+    if (!title || title.length < 3) {
+      toast.error("Title must be at least 3 characters");
+      return;
+    }
+
+    // Check if thumbnail is required (no existing thumbnail and no new upload)
+    if (!thumbnailUrl && !thumbnail) {
+      console.log("Validation failed: No thumbnail provided");
+      toast.error("Please upload a thumbnail image");
+      return;
+    }
+
+    console.log("Validation passed: Thumbnail OK");
+
+    if (questions.length === 0) {
+      toast.error("At least one question is required");
+      return;
+    }
+
+    for (const q of questions) {
+      if (!q.questionText || q.questionText.length < 3) {
+        toast.error("All questions must have text (min 3 characters)");
         return;
       }
-      if (questions.length === 0) {
-        toast.error("At least one question is required");
-        return;
-      }
-      for (const q of questions) {
-        if (!q.questionText || q.questionText.length < 3) {
-          toast.error("All questions must have text (min 3 characters)");
-          return;
-        }
-        if (!q.correctAnswer || q.correctAnswer.length === 0) {
-          toast.error("All questions must have an answer");
-          return;
-        }
-      }
-    } else {
-      const parseResult = typeTheAnswerSchema.safeParse(payload);
-      if (!parseResult.success) {
-        const issues = parseResult.error.issues;
-        const errObj: Record<string, string> = {};
-        issues.forEach((issue) => {
-          const key = issue.path.join(".");
-          errObj[key] = issue.message;
-        });
-        setFormErrors(errObj);
-        toast.error(issues[0].message);
+      if (!q.correctAnswer || q.correctAnswer.length === 0) {
+        toast.error("All questions must have an answer");
         return;
       }
     }
@@ -177,12 +203,20 @@ function EditTypeTheAnswer() {
       if (description) {
         formData.append("description", description);
       }
+
+      // Always append thumbnail if user uploaded a new one
       if (thumbnail) {
+        console.log(
+          "Uploading new thumbnail:",
+          thumbnail.name,
+          thumbnail.size,
+          "bytes",
+        );
         formData.append("thumbnail_image", thumbnail);
+      } else {
+        console.log("No new thumbnail, keeping existing:", thumbnailUrl);
       }
-      if (backgroundImage) {
-        formData.append("background_image", backgroundImage);
-      }
+
       formData.append("is_published", String(publish));
       formData.append("time_limit_seconds", String(settings.timeLimitSeconds));
       formData.append("score_per_question", String(settings.scorePerQuestion));
@@ -223,6 +257,20 @@ function EditTypeTheAnswer() {
     return (
       <div className="w-full h-screen flex justify-center items-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-screen flex flex-col justify-center items-center gap-4">
+        <Typography variant="h3" className="text-red-500">
+          {error}
+        </Typography>
+        <Button onClick={() => navigate("/my-projects")} variant="outline">
+          <ArrowLeft className="mr-2" size={16} />
+          Back to My Projects
+        </Button>
       </div>
     );
   }
@@ -294,7 +342,7 @@ function EditTypeTheAnswer() {
           </FormField>
 
           <FormField label="Description" error={formErrors.description}>
-            <TextareaField
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter game description..."
@@ -303,50 +351,62 @@ function EditTypeTheAnswer() {
           </FormField>
 
           <FormField label="Thumbnail Image" error={formErrors.thumbnail}>
-            {thumbnailUrl && !thumbnail && (
-              <div className="mb-2">
-                <img
-                  src={thumbnailUrl}
-                  alt="Current thumbnail"
-                  className="w-32 h-32 object-cover rounded"
+            {thumbnailUrl && !thumbnail ? (
+              <div className="mb-3 space-y-2">
+                <div className="relative inline-block">
+                  <img
+                    src={`${import.meta.env.VITE_API_URL}/${thumbnailUrl}`}
+                    alt="Current thumbnail"
+                    className="w-48 h-48 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Current thumbnail</p>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setThumbnailUrl(null);
+                      toast.success(
+                        "Thumbnail removed. You can now upload a new one.",
+                      );
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    <Trash2 size={14} />
+                    Remove
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-600 font-medium">
+                  ⚠️ Click "Remove" to delete current thumbnail before uploading
+                  a new one
+                </p>
+              </div>
+            ) : (
+              <>
+                <Dropzone
+                  label="Upload Thumbnail"
+                  onChange={(file) => {
+                    console.log("New thumbnail file selected:", file);
+                    setThumbnail(file);
+                  }}
+                  allowedTypes={[
+                    "image/png",
+                    "image/jpeg",
+                    "image/jpg",
+                    "image/webp",
+                  ]}
+                  maxSize={5 * 1024 * 1024}
                 />
-                <p className="text-sm text-gray-500 mt-1">Current thumbnail</p>
-              </div>
-            )}
-            <Dropzone
-              onDrop={(files) => setThumbnail(files[0])}
-              accept={{ "image/*": [] }}
-              maxFiles={1}
-            />
-            {thumbnail && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                <ImageIcon size={16} />
-                {thumbnail.name} (New)
-              </div>
-            )}
-          </FormField>
-
-          <FormField label="Background Image (Optional)">
-            {backgroundImageUrl && !backgroundImage && (
-              <div className="mb-2">
-                <img
-                  src={backgroundImageUrl}
-                  alt="Current background"
-                  className="w-32 h-32 object-cover rounded"
-                />
-                <p className="text-sm text-gray-500 mt-1">Current background</p>
-              </div>
-            )}
-            <Dropzone
-              onDrop={(files) => setBackgroundImage(files[0])}
-              accept={{ "image/*": [] }}
-              maxFiles={1}
-            />
-            {backgroundImage && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                <ImageIcon size={16} />
-                {backgroundImage.name} (New)
-              </div>
+                {thumbnail && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-green-600 font-medium">
+                    <ImageIcon size={16} />
+                    {thumbnail.name} (New image selected -{" "}
+                    {Math.round(thumbnail.size / 1024)}KB)
+                  </div>
+                )}
+              </>
             )}
           </FormField>
         </div>
@@ -355,12 +415,12 @@ function EditTypeTheAnswer() {
         <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
           <Typography variant="h4">Game Settings</Typography>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Time Limit"
-              error={formErrors["settings.timeLimitSeconds"]}
-            >
-              <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <FormField
+                label="Time Limit (seconds)"
+                error={formErrors["settings.timeLimitSeconds"]}
+              >
                 <Input
                   type="number"
                   min={30}
@@ -373,28 +433,33 @@ function EditTypeTheAnswer() {
                     }))
                   }
                 />
-                <p className="text-sm text-gray-500">
-                  Time: {formatTime(settings.timeLimitSeconds)} (30s - 10min)
-                </p>
-              </div>
-            </FormField>
+              </FormField>
+              <p className="text-sm text-gray-500 pl-1">
+                ⏱️ {formatTime(settings.timeLimitSeconds)} (Range: 30s - 10min)
+              </p>
+            </div>
 
-            <FormField
-              label="Points per Question"
-              error={formErrors["settings.scorePerQuestion"]}
-            >
-              <Input
-                type="number"
-                min={1}
-                value={settings.scorePerQuestion}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    scorePerQuestion: parseInt(e.target.value) || 1,
-                  }))
-                }
-              />
-            </FormField>
+            <div className="space-y-2">
+              <FormField
+                label="Points per Question"
+                error={formErrors["settings.scorePerQuestion"]}
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={settings.scorePerQuestion}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      scorePerQuestion: parseInt(e.target.value) || 1,
+                    }))
+                  }
+                />
+              </FormField>
+              <p className="text-sm text-gray-500 pl-1">
+                🎯 Each correct answer awards this many points
+              </p>
+            </div>
           </div>
         </div>
 
@@ -415,7 +480,7 @@ function EditTypeTheAnswer() {
                 className="border border-slate-200 rounded-lg p-4 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <Typography variant="h5">Question {qIndex + 1}</Typography>
+                  <Typography variant="h4">Question {qIndex + 1}</Typography>
                   {questions.length > 1 && (
                     <Button
                       variant="ghost"
@@ -433,7 +498,7 @@ function EditTypeTheAnswer() {
                   error={formErrors[`questions.${qIndex}.questionText`]}
                   required
                 >
-                  <TextareaField
+                  <Textarea
                     value={question.questionText}
                     onChange={(e) =>
                       handleQuestionTextChange(qIndex, e.target.value)
