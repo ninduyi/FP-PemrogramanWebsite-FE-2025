@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import api from "@/api/axios";
-import ScoreAPI from "@/api/score";
 
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/ui/layout/Navbar";
@@ -24,15 +23,7 @@ import thumbnailPlaceholder from "../assets/images/thumbnail-placeholder.png";
 import iconPlus from "../assets/images/icon-plus.svg";
 import iconSearch from "../assets/images/icon-search.svg";
 import iconFolderLarge from "../assets/images/icon-folder-large.svg";
-import {
-  EyeOff,
-  Eye,
-  Edit,
-  Trash2,
-  Play,
-  Trophy,
-  Lightbulb,
-} from "lucide-react";
+import { EyeOff, Eye, Edit, Trash2, Play, Lightbulb } from "lucide-react";
 import toast from "react-hot-toast";
 
 type Project = {
@@ -45,7 +36,6 @@ type Project = {
 };
 
 type ProjectWithStats = Project & {
-  highestScore?: number;
   hints?: string[];
 };
 
@@ -62,39 +52,34 @@ export default function MyProjectsPage() {
         const response = await api.get("/api/auth/me/game");
         const projectsData = response.data.data as Project[];
 
-        // Fetch highest scores and extract hints for each project
+        // Extract hints for each project
         const projectsWithStats = await Promise.all(
           projectsData.map(async (project) => {
-            let highestScore: number | undefined;
             let hints: string[] = [];
-
-            try {
-              // Fetch highest score
-              const scoreData = await ScoreAPI.getHighestScore(project.id);
-              if (
-                scoreData &&
-                typeof scoreData === "object" &&
-                "score" in scoreData
-              ) {
-                highestScore = (scoreData as { score: number }).score;
-              }
-            } catch {
-              console.log(`No score data for ${project.id}`);
-            }
 
             // Extract hints from game_json if it's GroupSort
             if (project.game_template === "GroupSort") {
               try {
                 // game_json structure: { categories: [{ items: [{ hint?: string }] }] }
-                const gameJson = (response.data.data as unknown[]).find(
+                const projectWithJson = (response.data.data as unknown[]).find(
                   (p: unknown) => (p as { id: string }).id === project.id,
-                )?.game_json;
+                ) as
+                  | {
+                      game_json?: {
+                        categories?: { items?: { hint?: string }[] }[];
+                      };
+                    }
+                  | undefined;
+
+                const gameJson = projectWithJson?.game_json;
                 if (gameJson && gameJson.categories) {
                   const allHints = gameJson.categories
-                    .flatMap((cat: { items?: unknown[] }) => cat.items || [])
-                    .map((item: { hint?: string }) => item.hint)
-                    .filter((h: string | undefined) => h && h.trim() !== "");
-                  hints = allHints as string[];
+                    .flatMap(
+                      (cat: { items?: { hint?: string }[] }) => cat.items || [],
+                    )
+                    .map((item) => item.hint)
+                    .filter((h): h is string => !!h && h.trim() !== "");
+                  hints = allHints;
                 }
               } catch {
                 console.log(`Could not extract hints for ${project.id}`);
@@ -103,7 +88,6 @@ export default function MyProjectsPage() {
 
             return {
               ...project,
-              highestScore,
               hints,
             };
           }),
@@ -220,7 +204,7 @@ export default function MyProjectsPage() {
               <img
                 src={
                   project.thumbnail_image
-                    ? `${import.meta.env.VITE_API_URL}/${project.thumbnail_image}`
+                    ? project.thumbnail_image
                     : thumbnailPlaceholder
                 }
                 alt={
@@ -256,19 +240,6 @@ export default function MyProjectsPage() {
                     </Badge>
                   </div>
                 </div>
-
-                {/* Highest Score Display */}
-                {project.highestScore !== undefined && (
-                  <div className="flex items-center gap-2 bg-linear-to-r from-yellow-100 to-orange-100 p-2 rounded">
-                    <Trophy className="w-4 h-4 text-yellow-600" />
-                    <Typography
-                      variant="small"
-                      className="text-yellow-800 font-semibold"
-                    >
-                      Highest Score: {project.highestScore}
-                    </Typography>
-                  </div>
-                )}
 
                 {/* Hints Display */}
                 {project.hints && project.hints.length > 0 && (

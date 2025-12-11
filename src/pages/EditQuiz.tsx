@@ -101,9 +101,7 @@ function EditQuiz() {
         setDescription(data.description || "");
 
         if (data.thumbnail_image) {
-          setThumbnailPreview(
-            `${import.meta.env.VITE_API_URL}/${data.thumbnail_image}`,
-          );
+          setThumbnailPreview(data.thumbnail_image);
         } else setThumbnailPreview(null);
         setThumbnail(null);
 
@@ -111,11 +109,7 @@ function EditQuiz() {
           data.game_json?.questions || []
         ).map((q: ApiQuestion) => ({
           questionText: q.question_text || "",
-          questionImages: q.question_image
-            ? q.question_image.startsWith("http")
-              ? q.question_image
-              : `${import.meta.env.VITE_API_URL}/${q.question_image}`
-            : null,
+          questionImages: q.question_image || null,
           answers: (q.answers || []).map((a: ApiAnswer) => ({
             text: a.answer_text ?? "",
             isCorrect: Boolean(a.is_correct),

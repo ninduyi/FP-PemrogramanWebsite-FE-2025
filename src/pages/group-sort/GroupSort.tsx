@@ -36,6 +36,7 @@ interface GroupSortGame {
   thumbnail_image: string | null;
   is_published: boolean;
   game_data: GameData;
+  creator_name?: string;
 }
 
 // Cyberpunk Loading Screen Component with Rotating Box
@@ -367,7 +368,7 @@ function LevelSelection({
                   <img
                     src={
                       game.thumbnail_image
-                        ? `${import.meta.env.VITE_API_URL}/${game.thumbnail_image}`
+                        ? game.thumbnail_image
                         : thumbnailPlaceholder
                     }
                     alt={game.name}
@@ -639,7 +640,10 @@ function GroupSort() {
           gameData = response.data.data;
         } catch (publicError: unknown) {
           // If public fails (404 - unpublished), try private endpoint for testing
-          if (publicError.response?.status === 404) {
+          if (
+            (publicError as { response?: { status?: number } }).response
+              ?.status === 404
+          ) {
             try {
               const privateResponse = await api.get(
                 `/api/game/game-type/group-sort/${gameId}/play/private`,
@@ -1638,7 +1642,7 @@ function GroupSort() {
                 >
                   {item.image && (
                     <img
-                      src={`${import.meta.env.VITE_API_URL}/${item.image}`}
+                      src={item.image}
                       alt={item.text}
                       className="w-full h-20 object-cover rounded mb-2"
                     />
@@ -1679,7 +1683,7 @@ function GroupSort() {
                     >
                       {item.image && (
                         <img
-                          src={`${import.meta.env.VITE_API_URL}/${item.image}`}
+                          src={item.image}
                           alt={item.text}
                           className="w-full h-20 object-cover rounded mb-2 group-hover:brightness-110 transition-all"
                         />

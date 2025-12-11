@@ -312,7 +312,7 @@ function Quiz() {
 
             {currentQ.question_image && (
               <img
-                src={`${import.meta.env.VITE_API_URL}/${currentQ.question_image}`}
+                src={currentQ.question_image}
                 alt="Question"
                 className="mx-auto max-h-64 object-contain rounded-md"
               />

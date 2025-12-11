@@ -186,9 +186,10 @@ export default function HomePage() {
   const GameCard = ({ game }: { game: Game }) => {
     const handlePlayGame = () => {
       // Route based on game_template
-      const route = game.game_template === "Quiz" 
-        ? `/quiz/play/${game.id}` 
-        : `/group-sort/play/${game.id}`;
+      const route =
+        game.game_template === "Quiz"
+          ? `/quiz/play/${game.id}`
+          : `/group-sort/play/${game.id}`;
       window.location.href = route;
     };
 
@@ -200,9 +201,7 @@ export default function HomePage() {
         <div className="p-4 pb-0">
           <img
             src={
-              game.thumbnail_image
-                ? `${import.meta.env.VITE_API_URL}/${game.thumbnail_image}`
-                : thumbnailPlaceholder
+              game.thumbnail_image ? game.thumbnail_image : thumbnailPlaceholder
             }
             alt={game.thumbnail_image ? game.name : "Placeholder Thumbnail"}
             className="w-full aspect-video object-cover rounded-md"

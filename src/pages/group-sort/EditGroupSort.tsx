@@ -71,9 +71,7 @@ export default function EditGroupSort() {
         });
         setCategories(gameData.game_data.categories);
         if (gameData.thumbnail_image) {
-          setThumbnailPreview(
-            `${import.meta.env.VITE_API_URL}/${gameData.thumbnail_image}`,
-          );
+          setThumbnailPreview(gameData.thumbnail_image);
         }
       } catch (err) {
         console.error("Failed to load game:", err);
@@ -463,7 +461,7 @@ export default function EditGroupSort() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteItem(category.id, item.id)}
-                        className="text-red-500 hover:text-red-700 flex-shrink-0"
+                        className="text-red-500 hover:text-red-700 shrink-0"
                       >
                         <Trash2 size={16} />
                       </Button>
