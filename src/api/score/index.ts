@@ -1,10 +1,10 @@
-import api from '../axios';
+import api from "../axios";
 
 export interface ISubmitScorePayload {
   game_id: string;
   score: number;
   time_spent?: number;
-  game_data?: Record<string, any>;
+  game_data?: Record<string, unknown>;
 }
 
 export interface IGameScore {
@@ -13,7 +13,7 @@ export interface IGameScore {
   game_id: string;
   score: number;
   time_spent?: number;
-  game_data?: Record<string, any>;
+  game_data?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +39,7 @@ class ScoreAPI {
       const response = await api.post(`/api/score/submit`, payload);
       return response.data;
     } catch (error) {
-      console.error('Failed to submit score:', error);
+      console.error("Failed to submit score:", error);
       throw error;
     }
   }
@@ -49,31 +49,37 @@ class ScoreAPI {
       const response = await api.get(`/api/score/highest/${gameId}`);
       return response.data.data;
     } catch (error) {
-      console.error('Failed to get highest score:', error);
+      console.error("Failed to get highest score:", error);
       throw error;
     }
   }
 
-  static async getGameHistory(gameId: string, limit: number = 10): Promise<IGameScore[]> {
+  static async getGameHistory(
+    gameId: string,
+    limit: number = 10,
+  ): Promise<IGameScore[]> {
     try {
       const response = await api.get(`/api/score/history/${gameId}`, {
         params: { limit },
       });
       return response.data.data;
     } catch (error) {
-      console.error('Failed to get game history:', error);
+      console.error("Failed to get game history:", error);
       throw error;
     }
   }
 
-  static async getLeaderboard(gameId: string, limit: number = 10): Promise<ILeaderboardEntry[]> {
+  static async getLeaderboard(
+    gameId: string,
+    limit: number = 10,
+  ): Promise<ILeaderboardEntry[]> {
     try {
       const response = await api.get(`/api/score/leaderboard/${gameId}`, {
         params: { limit },
       });
       return response.data.data;
     } catch (error) {
-      console.error('Failed to get leaderboard:', error);
+      console.error("Failed to get leaderboard:", error);
       throw error;
     }
   }
@@ -83,7 +89,7 @@ class ScoreAPI {
       const response = await api.get(`/api/score/user/all-scores`);
       return response.data.data;
     } catch (error) {
-      console.error('Failed to get all user scores:', error);
+      console.error("Failed to get all user scores:", error);
       throw error;
     }
   }

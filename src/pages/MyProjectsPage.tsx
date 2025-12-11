@@ -24,7 +24,15 @@ import thumbnailPlaceholder from "../assets/images/thumbnail-placeholder.png";
 import iconPlus from "../assets/images/icon-plus.svg";
 import iconSearch from "../assets/images/icon-search.svg";
 import iconFolderLarge from "../assets/images/icon-folder-large.svg";
-import { EyeOff, Eye, Edit, Trash2, Play, Trophy, Lightbulb } from "lucide-react";
+import {
+  EyeOff,
+  Eye,
+  Edit,
+  Trash2,
+  Play,
+  Trophy,
+  Lightbulb,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 type Project = {
@@ -63,10 +71,14 @@ export default function MyProjectsPage() {
             try {
               // Fetch highest score
               const scoreData = await ScoreAPI.getHighestScore(project.id);
-if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
-  highestScore = (scoreData as any).score;  // ✅ Safe access
-}
-            } catch (err) {
+              if (
+                scoreData &&
+                typeof scoreData === "object" &&
+                "score" in scoreData
+              ) {
+                highestScore = (scoreData as { score: number }).score;
+              }
+            } catch {
               console.log(`No score data for ${project.id}`);
             }
 
@@ -74,15 +86,17 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
             if (project.game_template === "GroupSort") {
               try {
                 // game_json structure: { categories: [{ items: [{ hint?: string }] }] }
-                const gameJson = (response.data.data as any[]).find(p => p.id === project.id)?.game_json;
+                const gameJson = (response.data.data as unknown[]).find(
+                  (p: unknown) => (p as { id: string }).id === project.id,
+                )?.game_json;
                 if (gameJson && gameJson.categories) {
                   const allHints = gameJson.categories
-                    .flatMap((cat: any) => cat.items || [])
-                    .map((item: any) => item.hint)
-                    .filter((h: any) => h && h.trim() !== "");
+                    .flatMap((cat: { items?: unknown[] }) => cat.items || [])
+                    .map((item: { hint?: string }) => item.hint)
+                    .filter((h: string | undefined) => h && h.trim() !== "");
                   hints = allHints as string[];
                 }
-              } catch (err) {
+              } catch {
                 console.log(`Could not extract hints for ${project.id}`);
               }
             }
@@ -92,7 +106,7 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
               highestScore,
               hints,
             };
-          })
+          }),
         );
 
         setProjects(projectsWithStats);
@@ -106,11 +120,15 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
     fetchProjects();
   }, []);
 
-  const handleDeleteProject = async (projectId: string, gameTemplate: string) => {
+  const handleDeleteProject = async (
+    projectId: string,
+    gameTemplate: string,
+  ) => {
     try {
-      const endpoint = gameTemplate === "Quiz" 
-        ? `/api/game/game-type/quiz/${projectId}` 
-        : `/api/game/game-type/group-sort/${projectId}`;
+      const endpoint =
+        gameTemplate === "Quiz"
+          ? `/api/game/game-type/quiz/${projectId}`
+          : `/api/game/game-type/group-sort/${projectId}`;
       await api.delete(endpoint);
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
       toast.success("Project deleted successfully!");
@@ -120,14 +138,19 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
     }
   };
 
-  const handleUpdateStatus = async (gameId: string, isPublish: boolean, gameTemplate: string) => {
+  const handleUpdateStatus = async (
+    gameId: string,
+    isPublish: boolean,
+    gameTemplate: string,
+  ) => {
     try {
       const form = new FormData();
       form.append("is_publish", String(isPublish));
 
-      const endpoint = gameTemplate === "Quiz" 
-        ? `/api/game/game-type/quiz/${gameId}` 
-        : `/api/game/game-type/group-sort/${gameId}`;
+      const endpoint =
+        gameTemplate === "Quiz"
+          ? `/api/game/game-type/quiz/${gameId}`
+          : `/api/game/game-type/group-sort/${gameId}`;
       await api.patch(endpoint, form);
 
       setProjects((prev) =>
@@ -236,9 +259,12 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
 
                 {/* Highest Score Display */}
                 {project.highestScore !== undefined && (
-                  <div className="flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 p-2 rounded">
+                  <div className="flex items-center gap-2 bg-linear-to-r from-yellow-100 to-orange-100 p-2 rounded">
                     <Trophy className="w-4 h-4 text-yellow-600" />
-                    <Typography variant="small" className="text-yellow-800 font-semibold">
+                    <Typography
+                      variant="small"
+                      className="text-yellow-800 font-semibold"
+                    >
                       Highest Score: {project.highestScore}
                     </Typography>
                   </div>
@@ -249,18 +275,28 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                   <div className="bg-blue-50 p-2 rounded">
                     <div className="flex items-center gap-2 mb-1">
                       <Lightbulb className="w-4 h-4 text-blue-600" />
-                      <Typography variant="small" className="text-blue-900 font-semibold">
+                      <Typography
+                        variant="small"
+                        className="text-blue-900 font-semibold"
+                      >
                         Hints ({project.hints.length})
                       </Typography>
                     </div>
                     <div className="space-y-1">
                       {project.hints.slice(0, 2).map((hint, idx) => (
-                        <Typography key={idx} variant="small" className="text-blue-800 text-xs line-clamp-1">
+                        <Typography
+                          key={idx}
+                          variant="small"
+                          className="text-blue-800 text-xs line-clamp-1"
+                        >
                           • {hint}
                         </Typography>
                       ))}
                       {project.hints.length > 2 && (
-                        <Typography variant="small" className="text-blue-700 text-xs italic">
+                        <Typography
+                          variant="small"
+                          className="text-blue-700 text-xs italic"
+                        >
                           +{project.hints.length - 2} more hints
                         </Typography>
                       )}
@@ -274,9 +310,10 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                     size="sm"
                     className="h-7"
                     onClick={() => {
-                      const playRoute = project.game_template === "Quiz"
-                        ? `/quiz/play/${project.id}`
-                        : `/group-sort/play/${project.id}`;
+                      const playRoute =
+                        project.game_template === "Quiz"
+                          ? `/quiz/play/${project.id}`
+                          : `/group-sort/play/${project.id}`;
                       navigate(playRoute);
                     }}
                   >
@@ -288,9 +325,10 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                     size="sm"
                     className="h-7"
                     onClick={() => {
-                      const editRoute = project.game_template === "Quiz"
-                        ? `/quiz/edit/${project.id}`
-                        : `/group-sort/edit/${project.id}`;
+                      const editRoute =
+                        project.game_template === "Quiz"
+                          ? `/quiz/edit/${project.id}`
+                          : `/group-sort/edit/${project.id}`;
                       navigate(editRoute);
                     }}
                   >
@@ -303,7 +341,11 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                       size="sm"
                       className="h-7"
                       onClick={() => {
-                        handleUpdateStatus(project.id, false, project.game_template);
+                        handleUpdateStatus(
+                          project.id,
+                          false,
+                          project.game_template,
+                        );
                       }}
                     >
                       <EyeOff />
@@ -315,7 +357,11 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                       size="sm"
                       className="h-7"
                       onClick={() => {
-                        handleUpdateStatus(project.id, true, project.game_template);
+                        handleUpdateStatus(
+                          project.id,
+                          true,
+                          project.game_template,
+                        );
                       }}
                     >
                       <Eye />
@@ -349,7 +395,10 @@ if (scoreData && typeof scoreData === 'object' && 'score' in scoreData) {
                         <AlertDialogAction
                           className="bg-red-600 hover:bg-red-700"
                           onClick={() => {
-                            handleDeleteProject(project.id, project.game_template);
+                            handleDeleteProject(
+                              project.id,
+                              project.game_template,
+                            );
                           }}
                         >
                           Yes, Delete

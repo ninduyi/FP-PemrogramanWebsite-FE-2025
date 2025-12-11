@@ -96,7 +96,7 @@ function CreateGroupSort() {
               <FileUpload.Trigger asChild>
                 <Button
                   size="sm"
-                  className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
+                  className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
                 >
                   Choose File
                 </Button>
@@ -493,7 +493,7 @@ function CreateGroupSort() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 bg-fixed overflow-x-hidden"
+      className="min-h-screen bg-linear-to-br from-gray-900 via-purple-900 to-blue-900 bg-fixed overflow-x-hidden"
       style={{ overscrollBehavior: "none" }}
     >
       {/* Header */}
@@ -510,7 +510,7 @@ function CreateGroupSort() {
             </Button>
             <Typography
               variant="h3"
-              className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-mono tracking-wider"
+              className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-purple-400 font-mono tracking-wider"
             >
               CREATE GROUP SORT GAME
             </Typography>
@@ -525,7 +525,7 @@ function CreateGroupSort() {
           {/* Basic Info */}
           <div className="space-y-6">
             <div className="flex items-center gap-2">
-              <div className="w-1 h-8 bg-gradient-to-b from-cyan-400 to-purple-500 rounded-full"></div>
+              <div className="w-1 h-8 bg-linear-to-b from-cyan-400 to-purple-500 rounded-full"></div>
               <Typography
                 variant="h4"
                 className="text-cyan-400 font-mono tracking-wide"
@@ -593,7 +593,7 @@ function CreateGroupSort() {
                       onClick={() =>
                         setTimeLimit((prev) => Math.min(600, (prev || 60) + 1))
                       }
-                      className="w-5 h-3 bg-gradient-to-t from-cyan-500/20 to-cyan-500/40 hover:from-cyan-500/30 hover:to-cyan-500/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-400 hover:text-cyan-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-t"
+                      className="w-5 h-3 bg-linear-to-t from-cyan-500/20 to-cyan-500/40 hover:from-cyan-500/30 hover:to-cyan-500/60 border border-cyan-400/50 hover:border-cyan-300 text-cyan-400 hover:text-cyan-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-t"
                     >
                       ▲
                     </button>
@@ -602,7 +602,7 @@ function CreateGroupSort() {
                       onClick={() =>
                         setTimeLimit((prev) => Math.max(60, (prev || 60) - 1))
                       }
-                      className="w-5 h-3 bg-gradient-to-b from-cyan-500/20 to-cyan-500/40 hover:from-cyan-500/30 hover:to-cyan-500/60 border border-cyan-400/50 hover:border-cyan-300 border-t-0 text-cyan-400 hover:text-cyan-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-b"
+                      className="w-5 h-3 bg-linear-to-b from-cyan-500/20 to-cyan-500/40 hover:from-cyan-500/30 hover:to-cyan-500/60 border border-cyan-400/50 hover:border-cyan-300 border-t-0 text-cyan-400 hover:text-cyan-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-b"
                     >
                       ▼
                     </button>
@@ -640,7 +640,7 @@ function CreateGroupSort() {
                           Math.min(1000, (prev || 10) + 1),
                         )
                       }
-                      className="w-5 h-3 bg-gradient-to-t from-purple-500/20 to-purple-500/40 hover:from-purple-500/30 hover:to-purple-500/60 border border-purple-400/50 hover:border-purple-300 text-purple-400 hover:text-purple-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-t"
+                      className="w-5 h-3 bg-linear-to-t from-purple-500/20 to-purple-500/40 hover:from-purple-500/30 hover:to-purple-500/60 border border-purple-400/50 hover:border-purple-300 text-purple-400 hover:text-purple-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-t"
                     >
                       ▲
                     </button>
@@ -649,7 +649,7 @@ function CreateGroupSort() {
                       onClick={() =>
                         setScorePerItem((prev) => Math.max(1, (prev || 10) - 1))
                       }
-                      className="w-5 h-3 bg-gradient-to-b from-purple-500/20 to-purple-500/40 hover:from-purple-500/30 hover:to-purple-500/60 border border-purple-400/50 hover:border-purple-300 border-t-0 text-purple-400 hover:text-purple-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-b"
+                      className="w-5 h-3 bg-linear-to-b from-purple-500/20 to-purple-500/40 hover:from-purple-500/30 hover:to-purple-500/60 border border-purple-400/50 hover:border-purple-300 border-t-0 text-purple-400 hover:text-purple-300 text-[10px] flex items-center justify-center transition-all duration-200 rounded-b"
                     >
                       ▼
                     </button>
@@ -678,7 +678,7 @@ function CreateGroupSort() {
                     <div
                       className={`w-5 h-5 border-2 rounded bg-gray-800/60 transition-all duration-300 ${
                         isCategoryRandomized
-                          ? "border-cyan-400 bg-gradient-to-r from-cyan-500/30 to-purple-500/30"
+                          ? "border-cyan-400 bg-linear-to-r from-cyan-500/30 to-purple-500/30"
                           : "border-purple-500/50 group-hover:border-cyan-400/70"
                       }`}
                     >
@@ -714,7 +714,7 @@ function CreateGroupSort() {
                     <div
                       className={`w-5 h-5 border-2 rounded bg-gray-800/60 transition-all duration-300 ${
                         isItemRandomized
-                          ? "border-cyan-400 bg-gradient-to-r from-cyan-500/30 to-purple-500/30"
+                          ? "border-cyan-400 bg-linear-to-r from-cyan-500/30 to-purple-500/30"
                           : "border-purple-500/50 group-hover:border-cyan-400/70"
                       }`}
                     >
@@ -752,7 +752,7 @@ function CreateGroupSort() {
                     <div
                       className={`w-5 h-5 border-2 rounded bg-gray-800/60 transition-all duration-300 ${
                         isPublishImmediately
-                          ? "border-cyan-400 bg-gradient-to-r from-cyan-500/30 to-purple-500/30"
+                          ? "border-cyan-400 bg-linear-to-r from-cyan-500/30 to-purple-500/30"
                           : "border-purple-500/50 group-hover:border-cyan-400/70"
                       }`}
                     >
@@ -801,7 +801,7 @@ function CreateGroupSort() {
           <div className="space-y-6 pt-6 border-t border-purple-500/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-1 h-8 bg-gradient-to-b from-cyan-400 to-purple-500 rounded-full"></div>
+                <div className="w-1 h-8 bg-linear-to-b from-cyan-400 to-purple-500 rounded-full"></div>
                 <Typography
                   variant="h4"
                   className="text-cyan-400 font-mono tracking-wide"
@@ -812,7 +812,7 @@ function CreateGroupSort() {
               <Button
                 onClick={addCategory}
                 size="sm"
-                className="bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 transition-all duration-300 font-mono"
+                className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 transition-all duration-300 font-mono"
               >
                 <Plus size={16} className="mr-2" />
                 Add Category
@@ -827,7 +827,7 @@ function CreateGroupSort() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-mono text-white">
+                      <div className="w-6 h-6 bg-linear-to-br from-cyan-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-mono text-white">
                         {catIdx + 1}
                       </div>
                       <Label className="text-cyan-400 font-mono">
@@ -907,7 +907,7 @@ function CreateGroupSort() {
                     <Button
                       size="sm"
                       onClick={() => addItem(catIdx)}
-                      className="w-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono transition-all duration-300"
+                      className="w-full bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono transition-all duration-300"
                     >
                       <Plus size={16} className="mr-2" />
                       Add Item
@@ -923,7 +923,7 @@ function CreateGroupSort() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
-                  className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-mono tracking-wider py-6 text-lg shadow-lg shadow-purple-500/20"
+                  className="flex-1 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-mono tracking-wider py-6 text-lg shadow-lg shadow-purple-500/20"
                   disabled={loading}
                 >
                   <SaveIcon size={20} className="mr-3" />
@@ -931,18 +931,18 @@ function CreateGroupSort() {
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-gray-900/95 backdrop-blur-xl border-2 border-cyan-400/50 shadow-2xl shadow-cyan-500/30 rounded-xl max-w-md mx-auto">
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-purple-500/5 to-pink-400/5 rounded-xl"></div>
+                <div className="absolute inset-0 bg-linear-to-br from-cyan-400/5 via-purple-500/5 to-pink-400/5 rounded-xl"></div>
                 <div className="relative">
                   <AlertDialogHeader className="space-y-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-linear-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center">
                         <SaveIcon size={16} className="text-white" />
                       </div>
-                      <AlertDialogTitle className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-mono text-xl tracking-wider">
+                      <AlertDialogTitle className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-purple-400 font-mono text-xl tracking-wider">
                         CREATE GROUP SORT GAME?
                       </AlertDialogTitle>
                     </div>
-                    <div className="w-full h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent"></div>
+                    <div className="w-full h-px bg-linear-to-r from-transparent via-cyan-400/50 to-transparent"></div>
                     <AlertDialogDescription className="text-purple-300 font-mono text-sm leading-relaxed">
                       This will create a new Group Sort game with{" "}
                       <span className="text-cyan-400 font-bold bg-cyan-400/10 px-2 py-0.5 rounded border border-cyan-400/30">
@@ -964,7 +964,7 @@ function CreateGroupSort() {
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleSubmit}
-                      className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-mono tracking-wide transition-all duration-300 shadow-lg shadow-purple-500/30 border border-purple-400/30"
+                      className="flex-1 bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-mono tracking-wide transition-all duration-300 shadow-lg shadow-purple-500/30 border border-purple-400/30"
                     >
                       <SaveIcon size={16} className="mr-2" />
                       CREATE

@@ -4,10 +4,9 @@ import api from "@/api/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Typography } from "@/components/ui/typography";
-import { ArrowLeft, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Navbar from "@/components/ui/layout/Navbar";
-import thumbnailPlaceholder from "../../assets/images/thumbnail-placeholder.png";
 
 interface Item {
   id: string;
@@ -59,7 +58,7 @@ export default function EditGroupSort() {
       try {
         setLoading(true);
         const response = await api.get(
-          `/api/game/game-type/group-sort/${id}/play/private`
+          `/api/game/game-type/group-sort/${id}/play/private`,
         );
         const gameData = response.data.data;
 
@@ -73,7 +72,7 @@ export default function EditGroupSort() {
         setCategories(gameData.game_data.categories);
         if (gameData.thumbnail_image) {
           setThumbnailPreview(
-            `${import.meta.env.VITE_API_URL}/${gameData.thumbnail_image}`
+            `${import.meta.env.VITE_API_URL}/${gameData.thumbnail_image}`,
           );
         }
       } catch (err) {
@@ -88,12 +87,15 @@ export default function EditGroupSort() {
   }, [id]);
 
   const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "timeLimit" || name === "scorePerItem" ? parseInt(value) : value,
+      [name]:
+        name === "timeLimit" || name === "scorePerItem"
+          ? parseInt(value)
+          : value,
     }));
   };
 
@@ -111,14 +113,16 @@ export default function EditGroupSort() {
 
   const handleCategoryNameChange = (categoryId: string, newName: string) => {
     setCategories((prev) =>
-      prev.map((cat) => (cat.id === categoryId ? { ...cat, name: newName } : cat))
+      prev.map((cat) =>
+        cat.id === categoryId ? { ...cat, name: newName } : cat,
+      ),
     );
   };
 
   const handleItemTextChange = (
     categoryId: string,
     itemId: string,
-    newText: string
+    newText: string,
   ) => {
     setCategories((prev) =>
       prev.map((cat) =>
@@ -126,18 +130,18 @@ export default function EditGroupSort() {
           ? {
               ...cat,
               items: cat.items.map((item) =>
-                item.id === itemId ? { ...item, text: newText } : item
+                item.id === itemId ? { ...item, text: newText } : item,
               ),
             }
-          : cat
-      )
+          : cat,
+      ),
     );
   };
 
   const handleItemHintChange = (
     categoryId: string,
     itemId: string,
-    newHint: string
+    newHint: string,
   ) => {
     setCategories((prev) =>
       prev.map((cat) =>
@@ -145,11 +149,11 @@ export default function EditGroupSort() {
           ? {
               ...cat,
               items: cat.items.map((item) =>
-                item.id === itemId ? { ...item, hint: newHint } : item
+                item.id === itemId ? { ...item, hint: newHint } : item,
               ),
             }
-          : cat
-      )
+          : cat,
+      ),
     );
   };
 
@@ -161,8 +165,8 @@ export default function EditGroupSort() {
               ...cat,
               items: cat.items.filter((item) => item.id !== itemId),
             }
-          : cat
-      )
+          : cat,
+      ),
     );
   };
 
@@ -180,8 +184,8 @@ export default function EditGroupSort() {
               ...cat,
               items: [...cat.items, newItem],
             }
-          : cat
-      )
+          : cat,
+      ),
     );
   };
 
@@ -219,7 +223,7 @@ export default function EditGroupSort() {
 
       formDataToSend.append(
         "categories",
-        JSON.stringify(transformedCategories)
+        JSON.stringify(transformedCategories),
       );
 
       if (thumbnail) {
@@ -234,17 +238,21 @@ export default function EditGroupSort() {
 
       const response = await api.patch(
         `/api/game/game-type/group-sort/${id}`,
-        formDataToSend
+        formDataToSend,
       );
 
       console.log("Update response:", response.data);
       toast.success("Game updated successfully!");
       navigate("/my-projects");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save game:", err);
-      console.error("Error response:", err.response?.data);
+      console.error(
+        "Error response:",
+        (err as { response?: { data?: unknown } }).response?.data,
+      );
       toast.error(
-        err.response?.data?.message || "Failed to save game changes"
+        (err as { response?: { data?: { message?: string } } }).response?.data
+          ?.message || "Failed to save game changes",
       );
     } finally {
       setSaving(false);
@@ -283,7 +291,9 @@ export default function EditGroupSort() {
           </Button>
           <div>
             <Typography variant="h2">Edit Game</Typography>
-            <Typography variant="muted">Modify your game settings and content</Typography>
+            <Typography variant="muted">
+              Modify your game settings and content
+            </Typography>
           </div>
         </div>
 
@@ -430,7 +440,7 @@ export default function EditGroupSort() {
                             handleItemTextChange(
                               category.id,
                               item.id,
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           placeholder="Item text"
@@ -442,7 +452,7 @@ export default function EditGroupSort() {
                             handleItemHintChange(
                               category.id,
                               item.id,
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           placeholder="Hint (optional)"

@@ -1138,7 +1138,7 @@ function GroupSort() {
           />
         </div>
 
-        <div className="max-w-4xl w-full bg-gradient-to-br from-purple-900/40 via-black/60 to-cyan-900/40 backdrop-blur-xl border-3 border-cyan-500/70 rounded-2xl p-8 space-y-6 relative z-10 shadow-2xl shadow-cyan-500/50">
+        <div className="max-w-4xl w-full bg-linear-to-br from-purple-900/40 via-black/60 to-cyan-900/40 backdrop-blur-xl border-3 border-cyan-500/70 rounded-2xl p-8 space-y-6 relative z-10 shadow-2xl shadow-cyan-500/50">
           <div className="text-center space-y-3">
             <div className="relative">
               <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full" />
@@ -1159,7 +1159,7 @@ function GroupSort() {
           </div>
 
           {/* Statistik Performa */}
-          <div className="bg-gradient-to-br from-gray-900/60 to-black/40 border-2 border-cyan-500/50 rounded-xl p-6 shadow-lg shadow-cyan-500/20">
+          <div className="bg-linear-to-br from-gray-900/60 to-black/40 border-2 border-cyan-500/50 rounded-xl p-6 shadow-lg shadow-cyan-500/20">
             <Typography
               variant="h3"
               className="text-center text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-purple-500 mb-4 font-bold tracking-wider"
@@ -1169,7 +1169,7 @@ function GroupSort() {
 
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               {/* Benar */}
-              <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border-2 border-green-400 rounded-lg p-4 flex items-center gap-4 shadow-lg shadow-green-500/30">
+              <div className="bg-linear-to-br from-green-500/20 to-green-600/10 border-2 border-green-400 rounded-lg p-4 flex items-center gap-4 shadow-lg shadow-green-500/30">
                 <div className="bg-linear-to-br from-green-400 to-green-600 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-green-500/50">
                   <div className="text-white text-3xl font-bold">✓</div>
                 </div>
@@ -1190,7 +1190,7 @@ function GroupSort() {
               </div>
 
               {/* Salah */}
-              <div className="bg-gradient-to-br from-red-500/20 to-red-600/10 border-2 border-red-400 rounded-lg p-4 flex items-center gap-4 shadow-lg shadow-red-500/30">
+              <div className="bg-linear-to-br from-red-500/20 to-red-600/10 border-2 border-red-400 rounded-lg p-4 flex items-center gap-4 shadow-lg shadow-red-500/30">
                 <div className="bg-linear-to-br from-red-400 to-red-600 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-red-500/50">
                   <div className="text-white text-3xl font-bold">✗</div>
                 </div>
@@ -1236,7 +1236,7 @@ function GroupSort() {
             </div>
 
             {/* Performa Score */}
-            <div className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/10 border-2 border-yellow-400 rounded-lg p-5 flex items-center justify-between shadow-lg shadow-yellow-500/30">
+            <div className="bg-linear-to-r from-yellow-500/20 to-yellow-600/10 border-2 border-yellow-400 rounded-lg p-5 flex items-center justify-between shadow-lg shadow-yellow-500/30">
               <div className="flex items-center gap-4">
                 <div className="text-yellow-400 text-4xl drop-shadow-lg">★</div>
                 <div>
@@ -1259,7 +1259,7 @@ function GroupSort() {
 
           {/* Info Grid with Best Score Comparison */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-400 rounded-lg p-4 text-center shadow-lg shadow-blue-500/20">
+            <div className="bg-linear-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-400 rounded-lg p-4 text-center shadow-lg shadow-blue-500/20">
               <Typography
                 variant="small"
                 className="text-blue-300 block mb-1 font-mono font-bold"
@@ -1273,7 +1273,7 @@ function GroupSort() {
                 {totalItems || 0}
               </Typography>
             </div>
-            <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-2 border-purple-400 rounded-lg p-4 text-center shadow-lg shadow-purple-500/20">
+            <div className="bg-linear-to-br from-purple-500/20 to-purple-600/10 border-2 border-purple-400 rounded-lg p-4 text-center shadow-lg shadow-purple-500/20">
               <Typography
                 variant="small"
                 className="text-purple-300 block mb-1 font-mono font-bold"
@@ -1287,7 +1287,7 @@ function GroupSort() {
                 {result.score || 0}
               </Typography>
             </div>
-            <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-2 border-yellow-400 rounded-lg p-4 text-center shadow-lg shadow-yellow-500/20">
+            <div className="bg-linear-to-br from-yellow-500/20 to-yellow-600/10 border-2 border-yellow-400 rounded-lg p-4 text-center shadow-lg shadow-yellow-500/20">
               <Typography
                 variant="small"
                 className="text-yellow-300 block mb-1 font-mono font-bold"
@@ -1315,7 +1315,7 @@ function GroupSort() {
             highestScore !== undefined &&
             (result.score > highestScore ||
               (highestScore === 0 && result.score > 0)) && (
-              <div className="bg-gradient-to-r from-gold-500/30 to-yellow-500/30 border-2 border-yellow-300 rounded-xl p-6 text-center shadow-2xl shadow-yellow-500/50 animate-pulse">
+              <div className="bg-linear-to-r from-gold-500/30 to-yellow-500/30 border-2 border-yellow-300 rounded-xl p-6 text-center shadow-2xl shadow-yellow-500/50 animate-pulse">
                 <Typography
                   variant="h2"
                   className="text-yellow-300 font-mono text-3xl font-bold tracking-wider mb-2"
@@ -1334,7 +1334,7 @@ function GroupSort() {
           {/* First Time Player Alert */}
           {!loadingScores &&
             (highestScore === null || highestScore === undefined) && (
-              <div className="bg-gradient-to-r from-blue-500/30 to-purple-500/30 border-2 border-blue-300 rounded-xl p-6 text-center shadow-2xl shadow-blue-500/50">
+              <div className="bg-linear-to-r from-blue-500/30 to-purple-500/30 border-2 border-blue-300 rounded-xl p-6 text-center shadow-2xl shadow-blue-500/50">
                 <Typography
                   variant="h2"
                   className="text-blue-300 font-mono text-2xl font-bold tracking-wider mb-2"
@@ -1351,8 +1351,8 @@ function GroupSort() {
             )}
 
           {/* Rating */}
-          <div className="text-center p-6 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 border-2 border-purple-400 rounded-xl relative overflow-hidden shadow-2xl shadow-purple-500/40">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
+          <div className="text-center p-6 bg-linear-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 border-2 border-purple-400 rounded-xl relative overflow-hidden shadow-2xl shadow-purple-500/40">
+            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent opacity-0 hover:opacity-100 transition-opacity" />
             <Typography
               variant="h2"
               className={`${ratingColor} font-mono text-3xl font-bold tracking-wider relative`}
@@ -1373,7 +1373,7 @@ function GroupSort() {
 
           {/* Hall of Fame - Leaderboard */}
           {!loadingScores && leaderboard && leaderboard.length > 0 && (
-            <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30">
+            <div className="bg-linear-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30">
               <Typography
                 variant="h3"
                 className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 font-mono text-center text-3xl tracking-widest font-bold"
@@ -1384,7 +1384,7 @@ function GroupSort() {
                 {leaderboard.map((entry, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between bg-gradient-to-r from-gray-900/70 to-gray-800/70 p-4 rounded-lg border-2 border-purple-500/50 hover:border-purple-400 transition-all hover:shadow-lg hover:shadow-purple-500/30"
+                    className="flex items-center justify-between bg-linear-to-r from-gray-900/70 to-gray-800/70 p-4 rounded-lg border-2 border-purple-500/50 hover:border-purple-400 transition-all hover:shadow-lg hover:shadow-purple-500/30"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <span className="text-yellow-300 font-mono text-2xl font-bold w-10 text-center">
@@ -1433,7 +1433,7 @@ function GroupSort() {
 
           {/* No Leaderboard Message */}
           {!loadingScores && (!leaderboard || leaderboard.length === 0) && (
-            <div className="bg-gradient-to-r from-gray-900/50 to-gray-800/50 border-2 border-gray-700 rounded-lg p-4 text-center">
+            <div className="bg-linear-to-r from-gray-900/50 to-gray-800/50 border-2 border-gray-700 rounded-lg p-4 text-center">
               <Typography variant="p" className="text-gray-400 font-mono">
                 Leaderboard kosong - jadilah yang pertama!
               </Typography>
@@ -1441,7 +1441,7 @@ function GroupSort() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-4 sticky bottom-0 bg-gradient-to-r from-black/80 to-black/80 backdrop-blur-md border-t-2 border-cyan-500/50 -m-8 p-8 pt-6 rounded-b-2xl">
+          <div className="flex gap-4 sticky bottom-0 bg-linear-to-r from-black/80 to-black/80 backdrop-blur-md border-t-2 border-cyan-500/50 -m-8 p-8 pt-6 rounded-b-2xl">
             <Button
               variant="outline"
               className="flex-1 border-2 border-cyan-500 text-cyan-400 hover:bg-cyan-500/20 transition-all duration-300 font-mono font-bold uppercase hover:shadow-lg hover:shadow-cyan-500/40"
@@ -1617,7 +1617,7 @@ function GroupSort() {
           </div>
 
           <div
-            className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg p-6 hover:border-cyan-400/80 transition-all shadow-lg shadow-cyan-500/20"
+            className="bg-linear-to-br from-cyan-500/10 to-purple-500/10 backdrop-blur-md border-2 border-cyan-500/50 rounded-lg p-6 hover:border-cyan-400/80 transition-all shadow-lg shadow-cyan-500/20"
             onDragOver={handleDragOver}
             onDrop={handleDropToPool}
           >
@@ -1658,7 +1658,7 @@ function GroupSort() {
             {game.game_data.categories.map((category) => (
               <div
                 key={category.id}
-                className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-md border-2 border-purple-500/50 rounded-lg p-6 min-h-[300px] hover:border-purple-400/80 transition-all shadow-lg shadow-purple-500/20"
+                className="bg-linear-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-md border-2 border-purple-500/50 rounded-lg p-6 min-h-[300px] hover:border-purple-400/80 transition-all shadow-lg shadow-purple-500/20"
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(category.id)}
               >
@@ -1699,10 +1699,10 @@ function GroupSort() {
 
           {/* Submit Section */}
           <div className="mt-8 mb-6 px-4">
-            <div className="relative bg-gradient-to-r from-gray-900/60 via-purple-900/40 to-gray-900/60 backdrop-blur-lg border border-cyan-500/30 rounded-xl p-6 shadow-2xl shadow-purple-500/20">
+            <div className="relative bg-linear-to-r from-gray-900/60 via-purple-900/40 to-gray-900/60 backdrop-blur-lg border border-cyan-500/30 rounded-xl p-6 shadow-2xl shadow-purple-500/20">
               {/* Decorative border elements */}
-              <div className="absolute top-0 left-4 w-16 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500"></div>
-              <div className="absolute bottom-0 right-4 w-16 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-400"></div>
+              <div className="absolute top-0 left-4 w-16 h-0.5 bg-linear-to-r from-cyan-400 to-purple-500"></div>
+              <div className="absolute bottom-0 right-4 w-16 h-0.5 bg-linear-to-r from-purple-500 to-cyan-400"></div>
 
               <div className="text-center space-y-4">
                 <Button
@@ -1711,7 +1711,7 @@ function GroupSort() {
                     handleSubmit();
                   }}
                   disabled={allItems.length > 0}
-                  className="bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:from-cyan-400 hover:via-purple-500 hover:to-pink-400 disabled:from-gray-600 disabled:via-gray-700 disabled:to-gray-600 text-white px-12 py-6 text-xl font-bold font-mono tracking-wider shadow-2xl shadow-cyan-500/60 transition-all duration-300 transform hover:scale-105 active:scale-95 hover:shadow-cyan-500/90 disabled:scale-100 disabled:shadow-gray-500/30 border-2 border-cyan-300/50 disabled:border-gray-500/30 rounded-lg uppercase"
+                  className="bg-linear-to-r from-cyan-500 via-purple-600 to-pink-500 hover:from-cyan-400 hover:via-purple-500 hover:to-pink-400 disabled:from-gray-600 disabled:via-gray-700 disabled:to-gray-600 text-white px-12 py-6 text-xl font-bold font-mono tracking-wider shadow-2xl shadow-cyan-500/60 transition-all duration-300 transform hover:scale-105 active:scale-95 hover:shadow-cyan-500/90 disabled:scale-100 disabled:shadow-gray-500/30 border-2 border-cyan-300/50 disabled:border-gray-500/30 rounded-lg uppercase"
                 >
                   ▶ SUBMIT ANSWERS ◀
                 </Button>
@@ -1746,10 +1746,10 @@ function GroupSort() {
       {/* Time's Up Popup */}
       {showTimeUpPopup && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-red-900/90 via-gray-900/90 to-orange-900/90 border-4 border-red-500 rounded-xl p-8 text-center space-y-6 shadow-2xl shadow-red-500/50 max-w-md mx-4 relative overflow-hidden">
+          <div className="bg-linear-to-br from-red-900/90 via-gray-900/90 to-orange-900/90 border-4 border-red-500 rounded-xl p-8 text-center space-y-6 shadow-2xl shadow-red-500/50 max-w-md mx-4 relative overflow-hidden">
             {/* Background effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 via-orange-400/10 to-red-400/10 rounded-xl animate-pulse" />
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-400 to-red-500 animate-pulse" />
+            <div className="absolute inset-0 bg-linear-to-br from-red-400/10 via-orange-400/10 to-red-400/10 rounded-xl animate-pulse" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-red-500 via-orange-400 to-red-500 animate-pulse" />
 
             <div className="relative z-10 space-y-6">
               {/* Time's Up Icon */}
@@ -1767,11 +1767,11 @@ function GroupSort() {
               <div className="space-y-2">
                 <Typography
                   variant="h2"
-                  className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400 font-mono text-4xl tracking-widest font-bold"
+                  className="text-transparent bg-clip-text bg-linear-to-r from-red-400 to-orange-400 font-mono text-4xl tracking-widest font-bold"
                 >
                   TIME'S UP!
                 </Typography>
-                <div className="h-1 w-32 bg-gradient-to-r from-red-500 to-orange-500 mx-auto rounded-full" />
+                <div className="h-1 w-32 bg-linear-to-r from-red-500 to-orange-500 mx-auto rounded-full" />
               </div>
 
               {/* Message */}
@@ -1793,7 +1793,7 @@ function GroupSort() {
               {/* View Score Button */}
               <Button
                 onClick={handleTimeUpClose}
-                className="w-full bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-400 hover:to-orange-500 text-white font-bold py-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-500/50 font-mono tracking-wider text-lg border-2 border-red-400/50"
+                className="w-full bg-linear-to-r from-red-500 to-orange-600 hover:from-red-400 hover:to-orange-500 text-white font-bold py-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-500/50 font-mono tracking-wider text-lg border-2 border-red-400/50"
               >
                 📊 VIEW SCORE
               </Button>
@@ -1804,7 +1804,7 @@ function GroupSort() {
 
       {isPaused && !gameFinished && !showTimeUpPopup && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-purple-900 via-gray-900 to-blue-900 border-4 border-cyan-500 rounded-xl p-8 text-center space-y-6 shadow-2xl shadow-purple-500/50 max-w-md">
+          <div className="bg-linear-to-br from-purple-900 via-gray-900 to-blue-900 border-4 border-cyan-500 rounded-xl p-8 text-center space-y-6 shadow-2xl shadow-purple-500/50 max-w-md">
             <div className="flex justify-center">
               <div className="relative">
                 <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse" />
@@ -1861,7 +1861,7 @@ function GroupSort() {
                 await playButtonSound();
                 setIsPaused(false);
               }}
-              className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/50"
+              className="w-full bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/50"
             >
               <Play className="mr-2 inline" size={20} />
               RESUME GAME
