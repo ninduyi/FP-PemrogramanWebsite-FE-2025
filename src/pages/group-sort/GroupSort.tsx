@@ -672,8 +672,17 @@ function GroupSort() {
               correctCategoryId: string;
               hint?: string;
             }) => {
+              // Convert image path to proper format
+              let imageUrl = item.image;
+              if (imageUrl && !imageUrl.startsWith('data:')) {
+                // If it's a path, convert to API URL
+                imageUrl = `${import.meta.env.VITE_API_URL}/${imageUrl}`;
+              }
+              // If it starts with 'data:', it's already base64, use as-is
+              
               items.push({
                 ...item,
+                image: imageUrl,
                 correctCategoryId: cat.id,
               });
               // Collect hints
