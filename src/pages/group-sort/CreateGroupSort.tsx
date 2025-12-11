@@ -23,7 +23,7 @@ import {
 interface Item {
   text: string;
   image: File | null;
-  hint?: string;
+  hint: string;
 }
 
 interface Category {
@@ -38,8 +38,8 @@ function CreateGroupSort() {
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [categories, setCategories] = useState<Category[]>([
-    { name: "", items: [{ text: "", image: null }] },
-    { name: "", items: [{ text: "", image: null }] },
+    { name: "", items: [{ text: "", image: null, hint: "" }] },
+    { name: "", items: [{ text: "", image: null, hint: "" }] },
   ]);
   const [timeLimit, setTimeLimit] = useState<number | "">(""); // Empty by default
   const [scorePerItem, setScorePerItem] = useState<number | "">(""); // Empty by default
@@ -134,7 +134,7 @@ function CreateGroupSort() {
   const addCategory = () => {
     setCategories([
       ...categories,
-      { name: "", items: [{ text: "", image: null }] },
+      { name: "", items: [{ text: "", image: null, hint: "" }] },
     ]);
   };
 
@@ -154,7 +154,7 @@ function CreateGroupSort() {
 
   const addItem = (categoryIndex: number) => {
     const updated = [...categories];
-    updated[categoryIndex].items.push({ text: "", image: null });
+    updated[categoryIndex].items.push({ text: "", image: null, hint: "" });
     setCategories(updated);
   };
 
@@ -376,8 +376,96 @@ function CreateGroupSort() {
           );
           return false;
         }
+        if (!item.hint || !item.hint.trim()) {
+          toast.error(
+            `Item ${j + 1} in category "${category.name}" must have a hint`,
+            {
+              style: {
+                background:
+                  "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+                color: "#00ffff",
+                border: "1px solid #ff0080",
+                borderRadius: "8px",
+                fontFamily: "monospace",
+                fontSize: "14px",
+                fontWeight: "500",
+                boxShadow:
+                  "0 0 20px rgba(255, 0, 128, 0.3), 0 0 40px rgba(0, 255, 255, 0.2)",
+              },
+              iconTheme: {
+                primary: "#ff0080",
+                secondary: "#00ffff",
+              },
+            },
+          );
+          return false;
+        }
       }
     }
+
+    // Check for duplicate category names
+    const categoryNames = categories.map((cat) => cat.name.trim().toLowerCase());
+    const duplicateCategoryNames = categoryNames.filter(
+      (name, index) => categoryNames.indexOf(name) !== index
+    );
+    if (duplicateCategoryNames.length > 0) {
+      toast.error(
+        `Duplicate category name detected: "${duplicateCategoryNames[0]}". Category names must be unique.`,
+        {
+          style: {
+            background:
+              "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+            color: "#00ffff",
+            border: "1px solid #ff0080",
+            borderRadius: "8px",
+            fontFamily: "monospace",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow:
+              "0 0 20px rgba(255, 0, 128, 0.3), 0 0 40px rgba(0, 255, 255, 0.2)",
+          },
+          iconTheme: {
+            primary: "#ff0080",
+            secondary: "#00ffff",
+          },
+        },
+      );
+      return false;
+    }
+
+    // Check for duplicate item texts across all categories
+    const allItemTexts: string[] = [];
+    for (const category of categories) {
+      for (const item of category.items) {
+        const itemText = item.text.trim().toLowerCase();
+        if (allItemTexts.includes(itemText)) {
+          toast.error(
+            `Duplicate item detected: "${item.text}". Item texts must be unique across all categories.`,
+            {
+              style: {
+                background:
+                  "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+                color: "#00ffff",
+                border: "1px solid #ff0080",
+                borderRadius: "8px",
+                fontFamily: "monospace",
+                fontSize: "14px",
+                fontWeight: "500",
+                boxShadow:
+                  "0 0 20px rgba(255, 0, 128, 0.3), 0 0 40px rgba(0, 255, 255, 0.2)",
+              },
+              iconTheme: {
+                primary: "#ff0080",
+                secondary: "#00ffff",
+              },
+            },
+          );
+          return false;
+        }
+        allItemTexts.push(itemText);
+      }
+    }
+
     return true;
   };
 
@@ -493,9 +581,40 @@ function CreateGroupSort() {
 
   return (
     <div
-      className="min-h-screen bg-linear-to-br from-gray-900 via-purple-900 to-blue-900 bg-fixed overflow-x-hidden"
+      className="min-h-screen bg-black overflow-x-hidden relative"
       style={{ overscrollBehavior: "none" }}
     >
+      {/* Animated grid background */}
+      <div className="fixed inset-0 opacity-10 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)",
+            backgroundSize: "50px 50px",
+            animation: "gridMove 20s linear infinite",
+          }}
+        />
+      </div>
+
+      {/* Floating particles */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-cyan-500"
+            style={{
+              width: `${Math.random() * 4 + 2}px`,
+              height: `${Math.random() * 4 + 2}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animation: `float ${Math.random() * 10 + 10}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 5}s`,
+            }}
+          />
+        ))}
+      </div>
+
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-xl border-b border-purple-500/50 shadow-lg shadow-purple-500/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -885,14 +1004,20 @@ function CreateGroupSort() {
                               {item.image.name}
                             </div>
                           )}
-                          <Input
-                            placeholder="Hint (optional)"
-                            value={item.hint || ""}
-                            onChange={(e) =>
-                              updateItemHint(catIdx, itemIdx, e.target.value)
-                            }
-                            className="bg-gray-900/40 border-purple-500/30 focus:border-cyan-400 text-cyan-100 placeholder-purple-400/50 font-mono tracking-wide text-sm"
-                          />
+                          <div className="relative">
+                            <Input
+                              placeholder="Hint (required) *"
+                              value={item.hint || ""}
+                              onChange={(e) =>
+                                updateItemHint(catIdx, itemIdx, e.target.value)
+                              }
+                              className="bg-gray-900/40 border-purple-500/30 focus:border-cyan-400 text-cyan-100 placeholder-purple-400/50 font-mono tracking-wide text-sm"
+                              required
+                            />
+                            <span className="text-red-400 text-xs font-mono mt-1">
+                              * Hint is required for all items
+                            </span>
+                          </div>
                         </div>
                         <Button
                           variant="ghost"

@@ -4,7 +4,7 @@ import api from "@/api/axios";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { Typography } from "@/components/ui/typography";
-import { ArrowLeft, Pause, Play, Timer, Lock, Lightbulb } from "lucide-react";
+import { ArrowLeft, Pause, Play, Timer, Lock, Lightbulb, XCircle } from "lucide-react";
 import thumbnailPlaceholder from "../../assets/images/thumbnail-placeholder.png";
 import * as Tone from "tone";
 import ScoreAPI from "@/api/score";
@@ -454,7 +454,11 @@ function GroupSort() {
     }[]
   >([]);
   const [loadingScores, setLoadingScores] = useState(false);
-  const [hints, setHints] = useState<string[]>([]);
+  const [hintsUnlocked, setHintsUnlocked] = useState(false);
+  const [clickedCards, setClickedCards] = useState<Set<string>>(new Set());
+  const [hintPenalty, setHintPenalty] = useState(0);
+  const [showHintConfirm, setShowHintConfirm] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
   const backgroundMusicRef = useRef<{
     synth: Tone.PolySynth;
     pattern: Tone.Pattern<string>;
@@ -533,6 +537,56 @@ function GroupSort() {
       synth.triggerAttackRelease("G4", "16n", now + 0.08);
 
       setTimeout(() => synth.dispose(), 250);
+    } catch {
+      console.log("Audio not available");
+    }
+  };
+
+  // Countdown beep sound
+  const playCountdownBeep = async (isGo: boolean = false) => {
+    try {
+      await Tone.start();
+      const synth = new Tone.Synth({
+        oscillator: { type: "square" },
+        envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.05 },
+      }).toDestination();
+
+      if (isGo) {
+        // "GO!" sound - higher and more exciting
+        const now = Tone.now();
+        synth.triggerAttackRelease("C5", "8n", now);
+        synth.triggerAttackRelease("E5", "8n", now + 0.1);
+        synth.triggerAttackRelease("G5", "8n", now + 0.2);
+      } else {
+        // Regular countdown beep
+        synth.triggerAttackRelease("A4", "8n");
+      }
+
+      setTimeout(() => synth.dispose(), 500);
+    } catch {
+      console.log("Audio not available");
+    }
+  };
+
+  // Time's up alarm sound (dramatic warning)
+  const playTimeUpSound = async () => {
+    try {
+      await Tone.start();
+      const synth = new Tone.Synth({
+        oscillator: { type: "square" },
+        envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 },
+      }).toDestination();
+
+      // Alarm-like descending pattern
+      const now = Tone.now();
+      synth.triggerAttackRelease("G4", "8n", now);
+      synth.triggerAttackRelease("F4", "8n", now + 0.15);
+      synth.triggerAttackRelease("E4", "8n", now + 0.3);
+      synth.triggerAttackRelease("D4", "8n", now + 0.45);
+      synth.triggerAttackRelease("C4", "4n", now + 0.6);
+      synth.triggerAttackRelease("C4", "4n", now + 0.9);
+
+      setTimeout(() => synth.dispose(), 1500);
     } catch {
       console.log("Audio not available");
     }
@@ -662,7 +716,6 @@ function GroupSort() {
 
         // Flatten all items from all categories
         const items: Item[] = [];
-        const allHints: string[] = [];
         gameData.game_data.categories.forEach((cat: Category) => {
           cat.items.forEach(
             (item: {
@@ -685,10 +738,6 @@ function GroupSort() {
                 image: imageUrl,
                 correctCategoryId: cat.id,
               });
-              // Collect hints
-              if (item.hint && item.hint.trim()) {
-                allHints.push(item.hint);
-              }
             },
           );
         });
@@ -696,7 +745,6 @@ function GroupSort() {
         // Shuffle items
         const shuffled = [...items].sort(() => Math.random() - 0.5);
         setAllItems(shuffled);
-        setHints(allHints);
         setTimeLeft(gameData.game_data.timeLimit);
 
         // Initialize empty placement
@@ -723,6 +771,7 @@ function GroupSort() {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setShowTimeUpPopup(true);
+            playTimeUpSound();
             return 0;
           }
           return prev - 1;
@@ -823,20 +872,45 @@ function GroupSort() {
   const startGame = async () => {
     await playButtonSound();
     setShowIntro(false);
-    // If coming from URL with id, skip level selection and start game directly
+    // If coming from URL with id, skip level selection and show countdown
     if (id) {
       setShowLevelSelection(false);
-      setGameStarted(true);
+      await startCountdown();
     } else {
       setShowLevelSelection(true);
     }
+  };
+
+  const startCountdown = async () => {
+    return new Promise<void>((resolve) => {
+      let count = 3;
+      setCountdown(count);
+      playCountdownBeep();
+
+      const countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          setCountdown(count);
+          playCountdownBeep();
+        } else {
+          setCountdown(0); // Show "GO!"
+          playCountdownBeep(true);
+          setTimeout(() => {
+            setCountdown(null);
+            setGameStarted(true);
+            clearInterval(countdownInterval);
+            resolve();
+          }, 800);
+        }
+      }, 1000);
+    });
   };
 
   const startLevel = async (gameId: string) => {
     await playButtonSound();
     setSelectedGameId(gameId);
     setShowLevelSelection(false);
-    setGameStarted(true);
+    await startCountdown();
   };
 
   const handleDragStart = (item: Item) => {
@@ -869,6 +943,8 @@ function GroupSort() {
       draggedItem,
     ];
     setPlacedItems(updatedPlacement);
+    
+    // Clear dragged item after successful drop
     setDraggedItem(null);
   };
 
@@ -886,9 +962,63 @@ function GroupSort() {
     });
     setPlacedItems(updatedPlacement);
 
-    // Add back to pool
-    setAllItems((prev) => [...prev, draggedItem]);
+    // Add back to pool only if item is not already there (to prevent duplication)
+    setAllItems((prev) => {
+      const itemExists = prev.some((item) => item.id === draggedItem.id);
+      if (itemExists) {
+        return prev; // Item already in pool, don't add
+      }
+      return [...prev, draggedItem]; // Item from category, add to pool
+    });
     setDraggedItem(null);
+  };
+
+  const handleHintRequest = () => {
+    // Check if hints already unlocked
+    if (hintsUnlocked) {
+      return; // Already unlocked
+    }
+    setShowHintConfirm(true);
+  };
+
+  const handleHintConfirm = async () => {
+    if (!showHintConfirm) return;
+    
+    await playButtonSound();
+    
+    // Unlock all hints
+    setHintsUnlocked(true);
+    
+    // Add penalty once
+    setHintPenalty(20);
+    
+    setShowHintConfirm(false);
+    
+    toast.success("All hints unlocked! -20 points. Click any card to reveal.", {
+      style: {
+        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        color: "#fbbf24",
+        border: "1px solid #fbbf24",
+      },
+    });
+  };
+
+  const handleHintCancel = async () => {
+    await playButtonSound();
+    setShowHintConfirm(false);
+  };
+
+  const handleCardClick = (itemId: string) => {
+    if (!hintsUnlocked) return;
+    setClickedCards((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
   };
 
   const handleSubmit = async () => {
@@ -945,14 +1075,16 @@ function GroupSort() {
       const { correct_count, total_count, score, percentage } =
         checkAnswerResponse.data.data;
 
-      scoreToSubmit = score; // TAMBAH: Simpan score di variable
+      // Apply hint penalty
+      const finalScore = Math.max(0, score - hintPenalty);
+      scoreToSubmit = finalScore; // TAMBAH: Simpan score di variable
 
       setResult({
         correctItems: correct_count,
         totalItems: total_count,
         accuracy: percentage,
         timeTaken,
-        score,
+        score: finalScore,
       });
 
       toast.success(`Score: ${score} points (${percentage}% correct)`);
@@ -1099,6 +1231,128 @@ function GroupSort() {
 
   if (showLevelSelection) {
     return <LevelSelection onSelectLevel={startLevel} />;
+  }
+
+  // Countdown overlay
+  if (countdown !== null) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden z-50">
+        {/* Animated grid background */}
+        <div className="absolute inset-0 opacity-20">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)",
+              backgroundSize: "50px 50px",
+              animation: "gridMove 20s linear infinite",
+            }}
+          />
+        </div>
+
+        {/* Glowing rings */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            className="w-96 h-96 rounded-full border-4 border-cyan-500/30"
+            style={{ animation: "pulse 2s ease-in-out infinite" }}
+          />
+          <div
+            className="absolute w-80 h-80 rounded-full border-4 border-purple-500/30"
+            style={{ animation: "pulse 2s ease-in-out infinite 0.5s" }}
+          />
+          <div
+            className="absolute w-64 h-64 rounded-full border-4 border-pink-500/30"
+            style={{ animation: "pulse 2s ease-in-out infinite 1s" }}
+          />
+        </div>
+
+        {/* Countdown number or GO */}
+        <div className="relative z-10">
+          {countdown > 0 ? (
+            <div
+              className="text-[20rem] font-bold text-transparent bg-clip-text bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 font-mono leading-none"
+              style={{
+                animation: "scaleUp 0.8s ease-out",
+                textShadow:
+                  "0 0 100px rgba(6,182,212,0.8), 0 0 150px rgba(168,85,247,0.6)",
+              }}
+            >
+              {countdown}
+            </div>
+          ) : (
+            <div
+              className="text-[12rem] font-bold text-transparent bg-clip-text bg-linear-to-r from-green-400 via-cyan-400 to-blue-500 font-mono tracking-widest"
+              style={{
+                animation: "goAnimation 0.6s ease-out",
+                textShadow:
+                  "0 0 100px rgba(34,197,94,0.9), 0 0 150px rgba(6,182,212,0.7)",
+              }}
+            >
+              GO!
+            </div>
+          )}
+        </div>
+
+        {/* Particle effects */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-cyan-400"
+              style={{
+                width: `${Math.random() * 6 + 2}px`,
+                height: `${Math.random() * 6 + 2}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `float ${Math.random() * 3 + 2}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 2}s`,
+                opacity: Math.random() * 0.7 + 0.3,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* CSS Animations */}
+        <style>{`
+          @keyframes scaleUp {
+            0% {
+              transform: scale(0) rotate(-180deg);
+              opacity: 0;
+            }
+            50% {
+              transform: scale(1.2) rotate(10deg);
+            }
+            100% {
+              transform: scale(1) rotate(0deg);
+              opacity: 1;
+            }
+          }
+          @keyframes goAnimation {
+            0% {
+              transform: scale(0.5);
+              opacity: 0;
+            }
+            50% {
+              transform: scale(1.3);
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.3;
+            }
+            50% {
+              transform: scale(1.1);
+              opacity: 0.6;
+            }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   // Di GroupSort.tsx, ganti SELURUH bagian result screen dengan code ini
@@ -1384,7 +1638,7 @@ function GroupSort() {
 
           {/* Hall of Fame - Leaderboard */}
           {!loadingScores && leaderboard && leaderboard.length > 0 && (
-            <div className="bg-linear-to-br from-purple-500/20 to-pink-500/20 border-4 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30">
+            <div className="bg-linear-to-br from-purple-500/20 to-pink-500/20 border-4 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30 mb-16">
               <Typography
                 variant="h3"
                 className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 font-mono text-center text-3xl tracking-widest font-bold"
@@ -1562,40 +1816,6 @@ function GroupSort() {
               <span className="text-xl font-bold">{formatTime(timeLeft)}</span>
             </div>
 
-            {hints.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await playButtonSound();
-                  // Show hints in toast for now
-                  toast.success(`Hints: ${hints.join(", ")}`, {
-                    duration: 4000,
-                    style: {
-                      background:
-                        "linear-gradient(135deg, #0a2e0a 0%, #0f3e0f 50%, #1a5e1a 100%)",
-                      color: "#00ff88",
-                      border: "1px solid #00ff88",
-                      borderRadius: "8px",
-                      fontFamily: "monospace",
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      boxShadow:
-                        "0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 255, 0.2)",
-                    },
-                    iconTheme: {
-                      primary: "#00ff88",
-                      secondary: "#0a2e0a",
-                    },
-                  });
-                }}
-                className="border-cyan-500 text-cyan-400 hover:bg-cyan-500/20 transition-all"
-              >
-                <Lightbulb size={16} className="mr-1" />
-                Hint ({hints.length})
-              </Button>
-            )}
-
             <Button
               variant="outline"
               size="sm"
@@ -1614,6 +1834,56 @@ function GroupSort() {
       {/* Main Content with proper padding for fixed navbar */}
       <div className="relative z-10 pt-24">
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+          {/* Unlock Hints Button - Top Left with Neon Cyberpunk Theme */}
+          <div className="absolute top-28 left-8 z-40">
+            <button
+              onClick={handleHintRequest}
+              disabled={hintsUnlocked}
+              className={`group relative px-6 py-3 font-mono font-bold text-sm tracking-wider uppercase transition-all duration-300 ${
+                hintsUnlocked
+                  ? 'bg-gray-700/50 text-gray-500 border-2 border-gray-600 cursor-not-allowed'
+                  : 'bg-linear-to-r from-pink-600 via-purple-600 to-cyan-600 text-white border-2 border-pink-400 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.6),0_0_40px_rgba(168,85,247,0.4),0_0_60px_rgba(34,211,238,0.3)] hover:scale-105 animate-pulse'
+              } rounded-lg shadow-lg overflow-hidden`}
+              style={{
+                boxShadow: hintsUnlocked
+                  ? 'none'
+                  : '0 0 20px rgba(236, 72, 153, 0.4), 0 0 30px rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              {/* Animated background glow */}
+              {!hintsUnlocked && (
+                <div className="absolute inset-0 bg-linear-to-r from-pink-400 via-purple-400 to-cyan-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300" />
+              )}
+              
+              {/* Button content */}
+              <div className="relative flex items-center gap-2">
+                <Lightbulb
+                  className={hintsUnlocked ? '' : 'animate-bounce'}
+                  size={20}
+                />
+                <span>
+                  {hintsUnlocked ? '✓ HINTS UNLOCKED' : '💡 UNLOCK ALL HINTS'}
+                </span>
+              </div>
+              
+              {/* Penalty indicator */}
+              {!hintsUnlocked && (
+                <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full border-2 border-yellow-300 shadow-lg">
+                  -20
+                </div>
+              )}
+            </button>
+            
+            {/* Hint penalty display */}
+            {hintPenalty > 0 && (
+              <div className="mt-2 px-3 py-1 bg-red-900/80 border border-red-500 rounded-lg text-center">
+                <Typography variant="small" className="text-red-300 font-mono font-bold text-xs">
+                  Penalty: -{hintPenalty} pts
+                </Typography>
+              </div>
+            )}
+          </div>
+
           <div className="text-center space-y-3">
             <Typography
               variant="h2"
@@ -1640,28 +1910,84 @@ function GroupSort() {
               Available Items ({allItems.length})
             </Typography>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {allItems.map((item) => (
-                <div
-                  key={item.id}
-                  draggable
-                  onDragStart={() => handleDragStart(item)}
-                  className="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-3 cursor-move hover:scale-105 hover:border-yellow-300 hover:shadow-lg hover:shadow-yellow-500/40 transition-all text-center group"
-                >
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.text}
-                      className="w-full h-20 object-cover rounded mb-2"
-                    />
-                  )}
-                  <Typography
-                    variant="small"
-                    className="text-yellow-300 text-xs"
+              {allItems.map((item) => {
+                const isFlipped = hintsUnlocked && clickedCards.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="relative"
+                    style={{ perspective: '1000px' }}
                   >
-                    {item.text}
-                  </Typography>
-                </div>
-              ))}
+                    <div
+                      className={`relative w-full h-full transition-transform duration-500 ${
+                        isFlipped ? 'transform-[rotateY(180deg)]' : ''
+                      }`}
+                      style={{ transformStyle: 'preserve-3d' }}
+                      onClick={() => handleCardClick(item.id)}
+                    >
+                      {/* Front side */}
+                      <div
+                        draggable
+                        onDragStart={() => handleDragStart(item)}
+                        className={`bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-3 ${
+                          hintsUnlocked ? 'cursor-pointer' : 'cursor-move'
+                        } hover:scale-105 hover:border-yellow-300 hover:shadow-lg hover:shadow-yellow-500/40 transition-all text-center group ${
+                          draggedItem?.id === item.id ? 'opacity-50' : ''
+                        } ${isFlipped ? 'invisible' : 'visible'}`}
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          WebkitBackfaceVisibility: 'hidden'
+                        }}
+                      >
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt={item.text}
+                            className="w-full h-20 object-cover rounded mb-2"
+                          />
+                        )}
+                        <Typography
+                          variant="small"
+                          className="text-yellow-300 text-xs mb-1"
+                        >
+                          {item.text}
+                        </Typography>
+                        {hintsUnlocked && (
+                          <div className="mt-2 text-xs text-cyan-300 font-mono animate-pulse">
+                            Click to reveal hint
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Back side (hint) */}
+                      {isFlipped && item.hint && (
+                        <div
+                          draggable
+                          onDragStart={() => handleDragStart(item)}
+                          className={`absolute inset-0 bg-linear-to-br from-purple-500/30 to-pink-500/30 border-2 border-purple-400 rounded-lg p-3 cursor-move hover:scale-105 hover:border-purple-300 transition-all text-center ${
+                            draggedItem?.id === item.id ? 'opacity-50' : ''
+                          }`}
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)'
+                          }}
+                        >
+                          <div className="flex flex-col items-center justify-center h-full">
+                            <span className="text-2xl mb-2">💡</span>
+                            <Typography
+                              variant="small"
+                              className="text-purple-200 text-xs font-mono"
+                            >
+                              {item.hint}
+                            </Typography>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1754,6 +2080,75 @@ function GroupSort() {
         </div>
       </div>
 
+      {/* Hint Penalty Display */}
+      {hintPenalty > 0 && !gameFinished && (
+        <div className="fixed top-24 right-4 z-40 bg-yellow-900/90 border-2 border-yellow-400 rounded-lg p-3 backdrop-blur-sm shadow-lg shadow-yellow-500/30">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <Typography variant="small" className="text-yellow-300 font-mono font-bold text-xs">
+                Hint Penalty
+              </Typography>
+              <Typography variant="small" className="text-yellow-200 font-mono text-lg">
+                -{hintPenalty} points
+              </Typography>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hint Confirmation Dialog */}
+      {showHintConfirm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="relative bg-linear-to-br from-gray-900 via-purple-900/50 to-gray-900 border-4 border-pink-400 rounded-xl p-8 text-center space-y-6 shadow-2xl max-w-md mx-4 overflow-hidden"
+            style={{
+              boxShadow: '0 0 40px rgba(236, 72, 153, 0.6), 0 0 80px rgba(168, 85, 247, 0.4)'
+            }}
+          >
+            {/* Animated glow effect */}
+            <div className="absolute inset-0 bg-linear-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse" />
+            
+            <div className="relative z-10">
+              <div className="text-6xl mb-4 animate-bounce">💡</div>
+              <Typography variant="h3" className="text-transparent bg-clip-text bg-linear-to-r from-pink-400 via-purple-400 to-cyan-400 font-mono font-bold text-2xl mb-4">
+                BUKA SEMUA PETUNJUK?
+              </Typography>
+              
+              <div className="bg-red-900/40 border-2 border-red-400/70 rounded-lg p-4 mb-4">
+                <Typography variant="p" className="text-red-300 font-mono text-sm">
+                  Ini akan mengurangi <span className="text-red-200 font-bold text-xl">20 poin</span> dari skor akhir kamu!
+                </Typography>
+              </div>
+              
+              <div className="bg-cyan-900/30 border border-cyan-400/50 rounded-lg p-3 mb-4">
+                <Typography variant="small" className="text-cyan-300 font-mono text-xs">
+                  Semua kartu dapat diklik untuk menampilkan petunjuk
+                </Typography>
+              </div>
+              
+              <Typography variant="small" className="text-yellow-400/80 font-mono text-xs italic">
+                Kartu akan berputar untuk menampilkan petunjuk saat diklik
+              </Typography>
+              
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={handleHintCancel}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 font-mono border-2 border-gray-500 hover:border-gray-400"
+                >
+                  BATAL
+                </Button>
+                <Button
+                  onClick={handleHintConfirm}
+                  className="flex-1 bg-linear-to-r from-pink-600 via-purple-600 to-cyan-600 hover:from-pink-500 hover:via-purple-500 hover:to-cyan-500 text-white font-mono font-bold border-2 border-pink-400"
+                >
+                  YA, BUKA SEMUA
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Time's Up Popup */}
       {showTimeUpPopup && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50">
@@ -1791,14 +2186,8 @@ function GroupSort() {
                   variant="small"
                   className="text-red-300 font-mono text-sm"
                 >
-                  ⏰ Waktu telah habis!
-                </Typography>
-                <Typography
-                  variant="small"
-                  className="text-orange-300 font-mono text-xs"
-                >
-                  Lihat hasil permainanmu sekarang
-                </Typography>
+                  Waktu telah habis! Lihat hasil permainanmu sekarang
+                </Typography>    
               </div>
 
               {/* View Score Button */}
@@ -1806,7 +2195,7 @@ function GroupSort() {
                 onClick={handleTimeUpClose}
                 className="w-full bg-linear-to-r from-red-500 to-orange-600 hover:from-red-400 hover:to-orange-500 text-white font-bold py-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-500/50 font-mono tracking-wider text-lg border-2 border-red-400/50"
               >
-                📊 VIEW SCORE
+                VIEW SCORE
               </Button>
             </div>
           </div>
@@ -1867,16 +2256,30 @@ function GroupSort() {
               </div>
             </div>
 
-            <Button
-              onClick={async () => {
-                await playButtonSound();
-                setIsPaused(false);
-              }}
-              className="w-full bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/50"
-            >
-              <Play className="mr-2 inline" size={20} />
-              RESUME GAME
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={async () => {
+                  await playButtonSound();
+                  setIsPaused(false);
+                }}
+                className="w-full bg-linear-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/50"
+              >
+                <Play className="mr-2 inline" size={20} />
+                RESUME GAME
+              </Button>
+              
+              <Button
+                onClick={async () => {
+                  await playButtonSound();
+                  setIsPaused(false);
+                  handleSubmit();
+                }}
+                className="w-full bg-linear-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-3 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-red-500/50"
+              >
+                <XCircle className="mr-2 inline" size={20} />
+                END GAME
+              </Button>
+            </div>
           </div>
         </div>
       )}
