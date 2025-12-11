@@ -21,6 +21,8 @@ import EditAnagram from "./pages/anagram/EditAnagram";
 // 📌 TAMBAHAN 1: Import Komponen Game Pair or No Pair
 import PairOrNoPairGame from "./pages/pair-or-no-pair";
 import CreatePairOrNoPair from "./pages/pair-or-no-pair/create";
+import GroupSort from "./pages/group-sort/GroupSort";
+import CreateGroupSort from "./pages/group-sort/CreateGroupSort";
 
 function App() {
   return (
@@ -37,6 +39,7 @@ function App() {
           path="/pair-or-no-pair/play/:gameId"
           element={<PairOrNoPairGame />}
         />
+        <Route path="/group-sort/play/:id" element={<GroupSort />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
@@ -58,6 +61,7 @@ function App() {
           />
           <Route path="/create-anagram" element={<CreateAnagram />} />
           <Route path="/anagram/edit/:id" element={<EditAnagram />} />
+          <Route path="/create-group-sort" element={<CreateGroupSort />} />
         </Route>
       </Routes>
     </>
