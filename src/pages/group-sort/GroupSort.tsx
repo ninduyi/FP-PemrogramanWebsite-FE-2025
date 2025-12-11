@@ -674,12 +674,12 @@ function GroupSort() {
             }) => {
               // Convert image path to proper format
               let imageUrl = item.image;
-              if (imageUrl && !imageUrl.startsWith('data:')) {
+              if (imageUrl && !imageUrl.startsWith("data:")) {
                 // If it's a path, convert to API URL
                 imageUrl = `${import.meta.env.VITE_API_URL}/${imageUrl}`;
               }
               // If it starts with 'data:', it's already base64, use as-is
-              
+
               items.push({
                 ...item,
                 image: imageUrl,
@@ -1313,11 +1313,9 @@ function GroupSort() {
               >
                 {loadingScores
                   ? "..."
-                  : highestScore !== null &&
-                      highestScore !== undefined &&
-                      highestScore > 0
+                  : highestScore !== null && highestScore !== undefined
                     ? highestScore
-                    : "No Record"}
+                    : 0}
               </Typography>
             </div>
           </div>
@@ -1386,7 +1384,7 @@ function GroupSort() {
 
           {/* Hall of Fame - Leaderboard */}
           {!loadingScores && leaderboard && leaderboard.length > 0 && (
-            <div className="bg-linear-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30">
+            <div className="bg-linear-to-br from-purple-500/20 to-pink-500/20 border-4 border-purple-400 rounded-xl p-6 space-y-4 shadow-2xl shadow-purple-500/30">
               <Typography
                 variant="h3"
                 className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 font-mono text-center text-3xl tracking-widest font-bold"

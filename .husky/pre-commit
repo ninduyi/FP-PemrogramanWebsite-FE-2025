@@ -1,9 +1,1 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Use node to run npx if npx is not found in PATH
-if command -v npx >/dev/null 2>&1; then
-  npx lint-staged
-else
-  node "$(dirname $(which node))/../lib/node_modules/npm/bin/npx-cli.js" lint-staged
-fi
+npx lint-staged
