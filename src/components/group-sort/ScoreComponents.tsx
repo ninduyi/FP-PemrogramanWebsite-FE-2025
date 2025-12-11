@@ -1,8 +1,5 @@
-import { useEffect, useState } from 'react';
-import ScoreAPI, {
-  type IGameScore,
-  type IUserScoreSummary,
-} from '@/api/score';
+import { useEffect, useState } from "react";
+import ScoreAPI, { type IGameScore, type IUserScoreSummary } from "@/api/score";
 
 interface GameResultProps {
   gameId: string;
@@ -41,7 +38,7 @@ export const GameResult = ({
 
       onScoreSubmitted?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit score');
+      setError(err instanceof Error ? err.message : "Failed to submit score");
     } finally {
       setLoading(false);
     }
@@ -70,7 +67,7 @@ export const GameResult = ({
           disabled={loading}
           className="submit-btn"
         >
-          {loading ? 'Submitting...' : 'Submit Score'}
+          {loading ? "Submitting..." : "Submit Score"}
         </button>
       </div>
     </div>
@@ -91,7 +88,9 @@ export const GameHistory = ({ gameId }: { gameId: string }) => {
         const data = await ScoreAPI.getGameHistory(gameId, 10);
         setHistory(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch history');
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch history",
+        );
       } finally {
         setLoading(false);
       }
@@ -121,7 +120,7 @@ export const GameHistory = ({ gameId }: { gameId: string }) => {
             {history.map((item) => (
               <tr key={item.id}>
                 <td className="score">{item.score}</td>
-                <td className="time">{item.time_spent || '-'}</td>
+                <td className="time">{item.time_spent || "-"}</td>
                 <td className="date">
                   {new Date(item.created_at).toLocaleDateString()}
                 </td>
@@ -138,7 +137,14 @@ export const GameHistory = ({ gameId }: { gameId: string }) => {
  * Component untuk menampilkan leaderboard
  */
 export const GameLeaderboard = ({ gameId }: { gameId: string }) => {
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<
+    {
+      user_id: string;
+      username: string;
+      highest_score: number;
+      total_plays: number;
+    }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,7 +154,9 @@ export const GameLeaderboard = ({ gameId }: { gameId: string }) => {
         const data = await ScoreAPI.getLeaderboard(gameId, 10);
         setLeaderboard(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch leaderboard');
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch leaderboard",
+        );
       } finally {
         setLoading(false);
       }
@@ -189,7 +197,7 @@ export const GameLeaderboard = ({ gameId }: { gameId: string }) => {
       )}
     </div>
   );
-}
+};
 
 /**
  * Component untuk menampilkan user stats/dashboard
@@ -205,7 +213,7 @@ export const UserScoresDashboard = () => {
         const data = await ScoreAPI.getAllUserScores();
         setScores(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch scores');
+        setError(err instanceof Error ? err.message : "Failed to fetch scores");
       } finally {
         setLoading(false);
       }
