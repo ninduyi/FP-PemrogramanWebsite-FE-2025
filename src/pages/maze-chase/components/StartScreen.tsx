@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import backgroundHome from "@/assets/maze-chase/Home_Background_assets.png";
 import logoHome from "@/assets/maze-chase/Home_Logo_assets.png";
 import characterHome from "@/assets/maze-chase/Home_Character_assets.png";
@@ -7,6 +7,7 @@ import BookshelfHome from "@/assets/maze-chase/Home_Bookshelf_assets.png";
 import DeskHome from "@/assets/maze-chase/Home_Desk_assets.png";
 import CarpetHome from "@/assets/maze-chase/Home_Carpet_assets.png";
 import buttonHome from "@/assets/maze-chase/Home_Button_assets.png";
+import audioHome from "@/assets/maze-chase/Home_audio_assets.mp3";
 
 interface StartScreenProps {
   onStart: () => void;
@@ -18,6 +19,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, hideButton }) => {
     width: typeof window !== "undefined" ? window.innerWidth : 1920,
     height: typeof window !== "undefined" ? window.innerHeight : 1080,
   });
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -31,6 +33,38 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, hideButton }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Play audio on mount and cleanup on unmount
+  useEffect(() => {
+    // Attempt to play on mount
+    const playAudio = () => {
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {
+          // If autoplay fails, add click listener for user interaction
+        });
+      }
+    };
+
+    playAudio();
+
+    // Add click listener as fallback for autoplay blocking
+    const handleUserInteraction = () => {
+      if (audioRef.current) {
+        audioRef.current.play();
+      }
+      window.removeEventListener("click", handleUserInteraction);
+    };
+
+    window.addEventListener("click", handleUserInteraction);
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      window.removeEventListener("click", handleUserInteraction);
+    };
+  }, []);
+
   return (
     <div
       className="w-screen h-screen bg-cover bg-center relative overflow-hidden"
@@ -38,6 +72,11 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, hideButton }) => {
         backgroundImage: `url(${backgroundHome})`,
       }}
     >
+      {/* Background Audio */}
+      <audio ref={audioRef} loop autoPlay>
+        <source src={audioHome} type="audio/mpeg" />
+      </audio>
+
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/25"></div>
 
