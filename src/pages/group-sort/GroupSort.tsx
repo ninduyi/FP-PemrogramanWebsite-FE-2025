@@ -4,7 +4,15 @@ import api from "@/api/axios";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { Typography } from "@/components/ui/typography";
-import { ArrowLeft, Pause, Play, Timer, Lock, Lightbulb, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Pause,
+  Play,
+  Timer,
+  Lock,
+  Lightbulb,
+  XCircle,
+} from "lucide-react";
 import thumbnailPlaceholder from "../../assets/images/thumbnail-placeholder.png";
 import * as Tone from "tone";
 import ScoreAPI from "@/api/score";
@@ -433,6 +441,7 @@ function GroupSort() {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameFinished, setGameFinished] = useState(false);
   const [showTimeUpPopup, setShowTimeUpPopup] = useState(false);
+  const [timeUpSoundPlayed, setTimeUpSoundPlayed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Result state
@@ -577,16 +586,13 @@ function GroupSort() {
         envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 },
       }).toDestination();
 
-      // Alarm-like descending pattern
+      // Hanya 3 ketukan pendek, menurun
       const now = Tone.now();
       synth.triggerAttackRelease("G4", "8n", now);
       synth.triggerAttackRelease("F4", "8n", now + 0.15);
       synth.triggerAttackRelease("E4", "8n", now + 0.3);
-      synth.triggerAttackRelease("D4", "8n", now + 0.45);
-      synth.triggerAttackRelease("C4", "4n", now + 0.6);
-      synth.triggerAttackRelease("C4", "4n", now + 0.9);
 
-      setTimeout(() => synth.dispose(), 1500);
+      setTimeout(() => synth.dispose(), 700);
     } catch {
       console.log("Audio not available");
     }
@@ -770,8 +776,12 @@ function GroupSort() {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
+            stopBackgroundMusic(); // Stop endgame music before playing times up sound
             setShowTimeUpPopup(true);
-            playTimeUpSound();
+            if (!timeUpSoundPlayed) {
+              playTimeUpSound();
+              setTimeUpSoundPlayed(true);
+            }
             return 0;
           }
           return prev - 1;
@@ -819,11 +829,11 @@ function GroupSort() {
 
   // Play result sound when game finishes
   useEffect(() => {
-    if (gameFinished && result) {
+    if (gameFinished && result && !showTimeUpPopup) {
       stopBackgroundMusic();
       playResultSound(result.accuracy);
     }
-  }, [gameFinished, result]);
+  }, [gameFinished, result, showTimeUpPopup]);
 
   // Fetch initial highest score when game is loaded
   useEffect(() => {
@@ -910,6 +920,7 @@ function GroupSort() {
     await playButtonSound();
     setSelectedGameId(gameId);
     setShowLevelSelection(false);
+    setTimeUpSoundPlayed(false); // Reset time up sound flag
     await startCountdown();
   };
 
@@ -943,7 +954,7 @@ function GroupSort() {
       draggedItem,
     ];
     setPlacedItems(updatedPlacement);
-    
+
     // Clear dragged item after successful drop
     setDraggedItem(null);
   };
@@ -983,20 +994,21 @@ function GroupSort() {
 
   const handleHintConfirm = async () => {
     if (!showHintConfirm) return;
-    
+
     await playButtonSound();
-    
+
     // Unlock all hints
     setHintsUnlocked(true);
-    
+
     // Add penalty once
     setHintPenalty(20);
-    
+
     setShowHintConfirm(false);
-    
+
     toast.success("All hints unlocked! -20 points. Click any card to reveal.", {
       style: {
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        background:
+          "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
         color: "#fbbf24",
         border: "1px solid #fbbf24",
       },
@@ -1193,8 +1205,8 @@ function GroupSort() {
 
   const handleTimeUpClose = async () => {
     await playButtonSound();
-    setShowTimeUpPopup(false);
     await handleSubmit();
+    setShowTimeUpPopup(false);
   };
 
   const handleExit = async () => {
@@ -1841,31 +1853,31 @@ function GroupSort() {
               disabled={hintsUnlocked}
               className={`group relative px-6 py-3 font-mono font-bold text-sm tracking-wider uppercase transition-all duration-300 ${
                 hintsUnlocked
-                  ? 'bg-gray-700/50 text-gray-500 border-2 border-gray-600 cursor-not-allowed'
-                  : 'bg-linear-to-r from-pink-600 via-purple-600 to-cyan-600 text-white border-2 border-pink-400 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.6),0_0_40px_rgba(168,85,247,0.4),0_0_60px_rgba(34,211,238,0.3)] hover:scale-105 animate-pulse'
+                  ? "bg-gray-700/50 text-gray-500 border-2 border-gray-600 cursor-not-allowed"
+                  : "bg-linear-to-r from-pink-600 via-purple-600 to-cyan-600 text-white border-2 border-pink-400 hover:border-cyan-400 hover:shadow-[0_0_20px_rgba(236,72,153,0.6),0_0_40px_rgba(168,85,247,0.4),0_0_60px_rgba(34,211,238,0.3)] hover:scale-105 animate-pulse"
               } rounded-lg shadow-lg overflow-hidden`}
               style={{
                 boxShadow: hintsUnlocked
-                  ? 'none'
-                  : '0 0 20px rgba(236, 72, 153, 0.4), 0 0 30px rgba(168, 85, 247, 0.3)',
+                  ? "none"
+                  : "0 0 20px rgba(236, 72, 153, 0.4), 0 0 30px rgba(168, 85, 247, 0.3)",
               }}
             >
               {/* Animated background glow */}
               {!hintsUnlocked && (
                 <div className="absolute inset-0 bg-linear-to-r from-pink-400 via-purple-400 to-cyan-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300" />
               )}
-              
+
               {/* Button content */}
               <div className="relative flex items-center gap-2">
                 <Lightbulb
-                  className={hintsUnlocked ? '' : 'animate-bounce'}
+                  className={hintsUnlocked ? "" : "animate-bounce"}
                   size={20}
                 />
                 <span>
-                  {hintsUnlocked ? '✓ HINTS UNLOCKED' : '💡 UNLOCK ALL HINTS'}
+                  {hintsUnlocked ? "✓ HINTS UNLOCKED" : "UNLOCK ALL HINTS"}
                 </span>
               </div>
-              
+
               {/* Penalty indicator */}
               {!hintsUnlocked && (
                 <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full border-2 border-yellow-300 shadow-lg">
@@ -1873,11 +1885,14 @@ function GroupSort() {
                 </div>
               )}
             </button>
-            
+
             {/* Hint penalty display */}
             {hintPenalty > 0 && (
               <div className="mt-2 px-3 py-1 bg-red-900/80 border border-red-500 rounded-lg text-center">
-                <Typography variant="small" className="text-red-300 font-mono font-bold text-xs">
+                <Typography
+                  variant="small"
+                  className="text-red-300 font-mono font-bold text-xs"
+                >
                   Penalty: -{hintPenalty} pts
                 </Typography>
               </div>
@@ -1916,13 +1931,13 @@ function GroupSort() {
                   <div
                     key={item.id}
                     className="relative"
-                    style={{ perspective: '1000px' }}
+                    style={{ perspective: "1000px" }}
                   >
                     <div
                       className={`relative w-full h-full transition-transform duration-500 ${
-                        isFlipped ? 'transform-[rotateY(180deg)]' : ''
+                        isFlipped ? "transform-[rotateY(180deg)]" : ""
                       }`}
-                      style={{ transformStyle: 'preserve-3d' }}
+                      style={{ transformStyle: "preserve-3d" }}
                       onClick={() => handleCardClick(item.id)}
                     >
                       {/* Front side */}
@@ -1930,13 +1945,13 @@ function GroupSort() {
                         draggable
                         onDragStart={() => handleDragStart(item)}
                         className={`bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-3 ${
-                          hintsUnlocked ? 'cursor-pointer' : 'cursor-move'
+                          hintsUnlocked ? "cursor-pointer" : "cursor-move"
                         } hover:scale-105 hover:border-yellow-300 hover:shadow-lg hover:shadow-yellow-500/40 transition-all text-center group ${
-                          draggedItem?.id === item.id ? 'opacity-50' : ''
-                        } ${isFlipped ? 'invisible' : 'visible'}`}
+                          draggedItem?.id === item.id ? "opacity-50" : ""
+                        } ${isFlipped ? "invisible" : "visible"}`}
                         style={{
-                          backfaceVisibility: 'hidden',
-                          WebkitBackfaceVisibility: 'hidden'
+                          backfaceVisibility: "hidden",
+                          WebkitBackfaceVisibility: "hidden",
                         }}
                       >
                         {item.image && (
@@ -1965,12 +1980,12 @@ function GroupSort() {
                           draggable
                           onDragStart={() => handleDragStart(item)}
                           className={`absolute inset-0 bg-linear-to-br from-purple-500/30 to-pink-500/30 border-2 border-purple-400 rounded-lg p-3 cursor-move hover:scale-105 hover:border-purple-300 transition-all text-center ${
-                            draggedItem?.id === item.id ? 'opacity-50' : ''
+                            draggedItem?.id === item.id ? "opacity-50" : ""
                           }`}
                           style={{
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            transform: 'rotateY(180deg)'
+                            backfaceVisibility: "hidden",
+                            WebkitBackfaceVisibility: "hidden",
+                            transform: "rotateY(180deg)",
                           }}
                         >
                           <div className="flex flex-col items-center justify-center h-full">
@@ -2086,10 +2101,16 @@ function GroupSort() {
           <div className="flex items-center gap-2">
             <span className="text-xl">⚠️</span>
             <div>
-              <Typography variant="small" className="text-yellow-300 font-mono font-bold text-xs">
+              <Typography
+                variant="small"
+                className="text-yellow-300 font-mono font-bold text-xs"
+              >
                 Hint Penalty
               </Typography>
-              <Typography variant="small" className="text-yellow-200 font-mono text-lg">
+              <Typography
+                variant="small"
+                className="text-yellow-200 font-mono text-lg"
+              >
                 -{hintPenalty} points
               </Typography>
             </div>
@@ -2100,36 +2121,54 @@ function GroupSort() {
       {/* Hint Confirmation Dialog */}
       {showHintConfirm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="relative bg-linear-to-br from-gray-900 via-purple-900/50 to-gray-900 border-4 border-pink-400 rounded-xl p-8 text-center space-y-6 shadow-2xl max-w-md mx-4 overflow-hidden"
+          <div
+            className="relative bg-linear-to-br from-gray-900 via-purple-900/50 to-gray-900 border-4 border-pink-400 rounded-xl p-8 text-center space-y-6 shadow-2xl max-w-md mx-4 overflow-hidden"
             style={{
-              boxShadow: '0 0 40px rgba(236, 72, 153, 0.6), 0 0 80px rgba(168, 85, 247, 0.4)'
+              boxShadow:
+                "0 0 40px rgba(236, 72, 153, 0.6), 0 0 80px rgba(168, 85, 247, 0.4)",
             }}
           >
             {/* Animated glow effect */}
             <div className="absolute inset-0 bg-linear-to-r from-pink-500/20 via-purple-500/20 to-cyan-500/20 animate-pulse" />
-            
+
             <div className="relative z-10">
               <div className="text-6xl mb-4 animate-bounce">💡</div>
-              <Typography variant="h3" className="text-transparent bg-clip-text bg-linear-to-r from-pink-400 via-purple-400 to-cyan-400 font-mono font-bold text-2xl mb-4">
+              <Typography
+                variant="h3"
+                className="text-transparent bg-clip-text bg-linear-to-r from-pink-400 via-purple-400 to-cyan-400 font-mono font-bold text-2xl mb-4"
+              >
                 BUKA SEMUA PETUNJUK?
               </Typography>
-              
+
               <div className="bg-red-900/40 border-2 border-red-400/70 rounded-lg p-4 mb-4">
-                <Typography variant="p" className="text-red-300 font-mono text-sm">
-                  Ini akan mengurangi <span className="text-red-200 font-bold text-xl">20 poin</span> dari skor akhir kamu!
+                <Typography
+                  variant="p"
+                  className="text-red-300 font-mono text-sm"
+                >
+                  Ini akan mengurangi{" "}
+                  <span className="text-red-200 font-bold text-xl">
+                    20 poin
+                  </span>{" "}
+                  dari skor akhir kamu!
                 </Typography>
               </div>
-              
+
               <div className="bg-cyan-900/30 border border-cyan-400/50 rounded-lg p-3 mb-4">
-                <Typography variant="small" className="text-cyan-300 font-mono text-xs">
+                <Typography
+                  variant="small"
+                  className="text-cyan-300 font-mono text-xs"
+                >
                   Semua kartu dapat diklik untuk menampilkan petunjuk
                 </Typography>
               </div>
-              
-              <Typography variant="small" className="text-yellow-400/80 font-mono text-xs italic">
+
+              <Typography
+                variant="small"
+                className="text-yellow-400/80 font-mono text-xs italic"
+              >
                 Kartu akan berputar untuk menampilkan petunjuk saat diklik
               </Typography>
-              
+
               <div className="flex gap-3 mt-6">
                 <Button
                   onClick={handleHintCancel}
@@ -2187,7 +2226,7 @@ function GroupSort() {
                   className="text-red-300 font-mono text-sm"
                 >
                   Waktu telah habis! Lihat hasil permainanmu sekarang
-                </Typography>    
+                </Typography>
               </div>
 
               {/* View Score Button */}
@@ -2267,7 +2306,7 @@ function GroupSort() {
                 <Play className="mr-2 inline" size={20} />
                 RESUME GAME
               </Button>
-              
+
               <Button
                 onClick={async () => {
                   await playButtonSound();
