@@ -23,6 +23,7 @@ import PairOrNoPairGame from "./pages/pair-or-no-pair";
 import CreatePairOrNoPair from "./pages/pair-or-no-pair/create";
 import GroupSort from "./pages/group-sort/GroupSort";
 import CreateGroupSort from "./pages/group-sort/CreateGroupSort";
+import EditGroupSort from "./pages/group-sort/EditGroupSort";
 
 function App() {
   return (
@@ -62,6 +63,7 @@ function App() {
           <Route path="/create-anagram" element={<CreateAnagram />} />
           <Route path="/anagram/edit/:id" element={<EditAnagram />} />
           <Route path="/create-group-sort" element={<CreateGroupSort />} />
+          <Route path="/group-sort/edit/:id" element={<EditGroupSort />} />
         </Route>
       </Routes>
     </>

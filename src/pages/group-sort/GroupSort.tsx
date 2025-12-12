@@ -792,7 +792,7 @@ function GroupSort() {
         if (timerRef.current) clearInterval(timerRef.current);
       };
     }
-  }, [gameStarted, isPaused, gameFinished]);
+  }, [gameStarted, isPaused, gameFinished, timeLeft, timeUpSoundPlayed]);
 
   // Start/stop background music based on game state
   useEffect(() => {
@@ -813,7 +813,14 @@ function GroupSort() {
     return () => {
       stopBackgroundMusic();
     };
-  }, [gameStarted, isPaused, gameFinished, showIntro, showLevelSelection]);
+  }, [
+    gameStarted,
+    isPaused,
+    gameFinished,
+    showIntro,
+    showLevelSelection,
+    startBackgroundMusic,
+  ]);
 
   // Resume background music when unpausing
   useEffect(() => {
@@ -825,7 +832,7 @@ function GroupSort() {
     ) {
       Tone.Transport.start();
     }
-  }, [isPaused]);
+  }, [isPaused, gameStarted, gameFinished]);
 
   // Play result sound when game finishes
   useEffect(() => {
@@ -833,7 +840,7 @@ function GroupSort() {
       stopBackgroundMusic();
       playResultSound(result.accuracy);
     }
-  }, [gameFinished, result, showTimeUpPopup]);
+  }, [gameFinished, result, showTimeUpPopup, playResultSound]);
 
   // Fetch initial highest score when game is loaded
   useEffect(() => {
@@ -877,7 +884,7 @@ function GroupSort() {
     };
 
     fetchInitialScores();
-  }, [game]);
+  }, [game, gameFinished, gameStarted]);
 
   const startGame = async () => {
     await playButtonSound();
@@ -1160,26 +1167,39 @@ function GroupSort() {
       console.log("Final score to submit:", scoreToSubmit);
 
       // Submit score ke database (use game.id from fetched data to ensure DB ID matches)
-      const submitScoreResponse = await ScoreAPI.submitScore({
-        game_id: game!.id,
-        score: scoreToSubmit,
-      });
-      console.log("Score submitted successfully:", submitScoreResponse);
+      let submitScoreResponse = null;
+      try {
+        submitScoreResponse = await ScoreAPI.submitScore({
+          game_id: game!.id,
+          score: scoreToSubmit,
+        });
+        console.log("Score submitted successfully:", submitScoreResponse);
+      } catch (err) {
+        toast.error(
+          "Failed to submit score. Cek koneksi atau pastikan game sudah publish.",
+        );
+        console.error("Failed to submit score:", err);
+      }
 
-      // Fetch highest score SETELAH submit
-      const highestScoreData = await ScoreAPI.getHighestScore(game!.id);
-      console.log("Highest score response:", highestScoreData);
+      // Fetch highest score SETELAH submit (atau tetap fetch meski submit gagal)
+      try {
+        const highestScoreData = await ScoreAPI.getHighestScore(game!.id);
+        console.log("Highest score response:", highestScoreData);
 
-      if (
-        highestScoreData &&
-        typeof highestScoreData === "object" &&
-        "score" in highestScoreData
-      ) {
-        const scoreValue = (highestScoreData as { score: number }).score;
-        if (typeof scoreValue === "number") {
-          setHighestScore(scoreValue);
-          console.log("Highest score set to:", scoreValue);
+        if (
+          highestScoreData &&
+          typeof highestScoreData === "object" &&
+          "score" in highestScoreData
+        ) {
+          const scoreValue = (highestScoreData as { score: number }).score;
+          if (typeof scoreValue === "number") {
+            setHighestScore(scoreValue);
+            console.log("Highest score set to:", scoreValue);
+          }
         }
+      } catch (err) {
+        toast.error("Gagal mengambil skor tertinggi. Cek koneksi.");
+        console.error("Failed to fetch highest score:", err);
       }
 
       // Fetch leaderboard

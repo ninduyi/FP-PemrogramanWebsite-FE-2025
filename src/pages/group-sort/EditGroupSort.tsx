@@ -50,18 +50,28 @@ export default function EditGroupSort() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchGame = async () => {
       if (!id) return;
-
       try {
         setLoading(true);
+        setFetchError(null);
         const response = await api.get(
           `/api/game/game-type/group-sort/${id}/play/private`,
         );
         const gameData = response.data.data;
-
+        if (
+          !gameData ||
+          !gameData.game_data ||
+          !Array.isArray(gameData.game_data.categories)
+        ) {
+          setFetchError(
+            "Data format error: Game data is incomplete or invalid.",
+          );
+          return;
+        }
         setGame(gameData);
         setFormData({
           name: gameData.name,
@@ -71,16 +81,40 @@ export default function EditGroupSort() {
         });
         setCategories(gameData.game_data.categories);
         if (gameData.thumbnail_image) {
-          setThumbnailPreview(gameData.thumbnail_image);
+          // If thumbnail_image is a relative path, prepend baseURL
+          setThumbnailPreview(
+            gameData.thumbnail_image.startsWith("http")
+              ? gameData.thumbnail_image
+              : `${import.meta.env.VITE_API_URL}/${gameData.thumbnail_image}`,
+          );
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        let message = "Failed to load game for editing";
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "response" in err &&
+          typeof (err as { response: unknown }).response === "object" &&
+          (err as { response: unknown }).response !== null &&
+          "data" in (err as { response: { data?: unknown } }).response &&
+          typeof (err as { response: { data: unknown } }).response.data ===
+            "object" &&
+          (err as { response: { data: unknown } }).response.data !== null &&
+          "message" in
+            (err as { response: { data: { message?: unknown } } }).response
+              .data &&
+          typeof (err as { response: { data: { message: unknown } } }).response
+            .data.message === "string"
+        ) {
+          message = (err as { response: { data: { message: string } } })
+            .response.data.message;
+        }
+        setFetchError(message);
         console.error("Failed to load game:", err);
-        toast.error("Failed to load game for editing");
       } finally {
         setLoading(false);
       }
     };
-
     fetchGame();
   }, [id]);
 
@@ -208,7 +242,7 @@ export default function EditGroupSort() {
       formDataToSend.append("description", formData.description);
       formDataToSend.append("score_per_item", formData.scorePerItem.toString());
       formDataToSend.append("time_limit", formData.timeLimit.toString());
-      formDataToSend.append("is_publish", "false");
+      // Don't modify publish status during edit - use separate publish/unpublish action
 
       // Transform categories to match backend format
       const transformedCategories = categories.map((cat) => ({
@@ -234,7 +268,7 @@ export default function EditGroupSort() {
         categories: transformedCategories,
       });
 
-      const response = await api.patch(
+      const response = await api.put(
         `/api/game/game-type/group-sort/${id}`,
         formDataToSend,
       );
@@ -261,6 +295,17 @@ export default function EditGroupSort() {
     return (
       <div className="w-full h-screen flex justify-center items-center">
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-300 border-t-black"></div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="w-full h-screen flex flex-col justify-center items-center gap-4">
+        <Typography variant="p" className="text-destructive">
+          {fetchError}
+        </Typography>
+        <Button onClick={() => navigate("/my-projects")}>Go Back</Button>
       </div>
     );
   }
