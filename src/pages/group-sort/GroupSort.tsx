@@ -317,6 +317,17 @@ function LevelSelection({
       try {
         setLoading(true);
         const response = await api.get("/api/game?gameTypeSlug=group-sort");
+        console.log("Fetched games:", response.data.data);
+        response.data.data.forEach((game: GroupSortGame) => {
+          console.log(
+            `Game "${game.name}": thumbnail_image length = ${game.thumbnail_image ? game.thumbnail_image.length : "null"}`,
+          );
+          if (game.thumbnail_image) {
+            console.log(
+              `  First 100 chars: ${game.thumbnail_image.substring(0, 100)}`,
+            );
+          }
+        });
         setGames(response.data.data);
       } catch (err) {
         console.error("Failed to fetch games:", err);
@@ -372,16 +383,17 @@ function LevelSelection({
                 className="relative rounded-lg overflow-hidden border-2 border-cyan-500 hover:border-purple-500 cursor-pointer hover:scale-105 transition-all bg-gray-900/50 backdrop-blur-sm"
                 onClick={() => onSelectLevel(game.id)}
               >
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={
-                      game.thumbnail_image
-                        ? game.thumbnail_image
-                        : thumbnailPlaceholder
-                    }
-                    alt={game.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div
+                  className="relative h-48 overflow-hidden bg-gray-800"
+                  style={{
+                    backgroundImage:
+                      game.thumbnail_image && game.thumbnail_image.trim()
+                        ? `url('${game.thumbnail_image.trim()}')`
+                        : `url('${thumbnailPlaceholder}')`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                >
                   <div className="absolute inset-0 bg-linear-to-t from-gray-900 to-transparent" />
                 </div>
 
@@ -731,17 +743,11 @@ function GroupSort() {
               correctCategoryId: string;
               hint?: string;
             }) => {
-              // Convert image path to proper format
-              let imageUrl = item.image;
-              if (imageUrl && !imageUrl.startsWith("data:")) {
-                // If it's a path, convert to API URL
-                imageUrl = `${import.meta.env.VITE_API_URL}/${imageUrl}`;
-              }
-              // If it starts with 'data:', it's already base64, use as-is
-
+              // Image is already in base64 format (data:image/jpeg;base64,...)
+              // or null - no conversion needed
               items.push({
                 ...item,
-                image: imageUrl,
+                image: item.image,
                 correctCategoryId: cat.id,
               });
             },
@@ -1956,7 +1962,11 @@ function GroupSort() {
                       >
                         {item.image && (
                           <img
-                            src={item.image}
+                            src={
+                              item.image.startsWith("http")
+                                ? item.image
+                                : `${import.meta.env.VITE_API_URL}/${item.image}`
+                            }
                             alt={item.text}
                             className="w-full h-20 object-cover rounded mb-2"
                           />
@@ -2031,7 +2041,11 @@ function GroupSort() {
                     >
                       {item.image && (
                         <img
-                          src={item.image}
+                          src={
+                            item.image.startsWith("http")
+                              ? item.image
+                              : `${import.meta.env.VITE_API_URL}/${item.image}`
+                          }
                           alt={item.text}
                           className="w-full h-20 object-cover rounded mb-2 group-hover:brightness-110 transition-all"
                         />

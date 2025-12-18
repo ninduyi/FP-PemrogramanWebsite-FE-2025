@@ -73,10 +73,12 @@ export default function EditGroupSort() {
     onChange,
     value,
     previewUrl,
+    showPreview = true,
   }: {
     onChange: (file: File | null) => void;
     value?: File | null;
     previewUrl?: string;
+    showPreview?: boolean;
   }) => {
     const [preview, setPreview] = useState<string | null>(previewUrl || null);
 
@@ -112,18 +114,26 @@ export default function EditGroupSort() {
           className="w-full"
         >
           {!preview && (
-            <FileUpload.Dropzone className="p-6 border-2 border-dashed border-purple-500/50 rounded-xl flex flex-col items-center text-center gap-3 bg-gray-900/30 hover:border-cyan-400/50 hover:bg-gray-900/40 transition-all duration-300">
-              <Upload className="size-8 text-cyan-400" />
-              <div className="text-sm font-mono text-cyan-300">
+            <FileUpload.Dropzone
+              className={`p-6 border-2 border-dashed border-purple-500/50 rounded-xl flex flex-col items-center text-center gap-3 bg-gray-900/30 hover:border-cyan-400/50 hover:bg-gray-900/40 transition-all duration-300 ${showPreview ? "" : "p-3"}`}
+            >
+              <Upload
+                className={`${showPreview ? "size-8" : "size-6"} text-cyan-400`}
+              />
+              <div
+                className={`${showPreview ? "text-sm" : "text-xs"} font-mono text-cyan-300`}
+              >
                 Drag or click to upload
               </div>
-              <div className="text-xs text-purple-400">
+              <div
+                className={`${showPreview ? "text-xs" : "text-[10px]"} text-purple-400`}
+              >
                 Max 5MB — PNG, JPEG only
               </div>
               <FileUpload.Trigger asChild>
                 <Button
-                  size="sm"
-                  className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
+                  size={showPreview ? "sm" : "sm"}
+                  className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono text-xs"
                 >
                   Choose File
                 </Button>
@@ -132,15 +142,21 @@ export default function EditGroupSort() {
           )}
 
           {preview && (
-            <div className="flex items-center gap-3 p-3 border border-purple-500/30 rounded-lg bg-gray-900/30 backdrop-blur-sm">
-              <div className="size-16 rounded-lg overflow-hidden border-2 border-cyan-400/50">
+            <div
+              className={`flex items-center gap-3 p-3 border border-purple-500/30 rounded-lg bg-gray-900/30 backdrop-blur-sm ${showPreview ? "" : ""}`}
+            >
+              <div
+                className={`${showPreview ? "size-16" : "size-12"} rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0`}
+              >
                 <img
                   src={preview}
                   alt="Preview"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="flex-1 text-sm truncate text-cyan-300 font-mono">
+              <div
+                className={`flex-1 text-sm truncate text-cyan-300 font-mono ${showPreview ? "text-sm" : "text-xs"}`}
+              >
                 {value?.name || "Current thumbnail"}
               </div>
               <Button
@@ -488,6 +504,18 @@ export default function EditGroupSort() {
     return true;
   };
 
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSave = async () => {
     if (!id || !game) return;
 
@@ -496,46 +524,41 @@ export default function EditGroupSort() {
     try {
       setSaving(true);
 
-      const formDataToSend = new FormData();
-      formDataToSend.append("name", name);
-      formDataToSend.append("description", description);
-      formDataToSend.append("score_per_item", scorePerItem.toString());
-      formDataToSend.append("time_limit", timeLimit.toString());
-      formDataToSend.append(
-        "is_category_randomized",
-        isCategoryRandomized.toString(),
-      );
-      formDataToSend.append("is_item_randomized", isItemRandomized.toString());
-
-      // Transform categories to match backend format
-      const transformedCategories = categories.map((cat) => ({
-        category_name: cat.name,
-        items: cat.items.map((item) => ({
-          item_text: item.text,
-          item_image_array_index: undefined,
-          item_hint: item.hint || null,
-        })),
-      }));
-
-      formDataToSend.append(
-        "categories",
-        JSON.stringify(transformedCategories),
-      );
-
+      // Convert thumbnail to base64 if provided
+      let thumbnailBase64: string | null = null;
       if (thumbnail) {
-        formDataToSend.append("thumbnail_image", thumbnail);
+        thumbnailBase64 = await fileToBase64(thumbnail);
       }
 
-      console.log("Sending update request:", {
-        name: name,
-        description: description,
+      // Transform categories with base64 item images
+      const transformedCategories = await Promise.all(
+        categories.map(async (cat) => ({
+          category_name: cat.name,
+          items: await Promise.all(
+            cat.items.map(async (item) => ({
+              item_text: item.text,
+              item_image:
+                item.image && item.image.startsWith("data:")
+                  ? item.image
+                  : item.image
+                    ? await fileToBase64(item.image as unknown as File)
+                    : null,
+              item_hint: item.hint || null,
+            })),
+          ),
+        })),
+      );
+
+      const response = await api.put(`/api/game/game-type/group-sort/${id}`, {
+        name,
+        description,
+        score_per_item: scorePerItem,
+        time_limit: timeLimit,
+        is_category_randomized: isCategoryRandomized.toString(),
+        is_item_randomized: isItemRandomized.toString(),
+        thumbnail_image: thumbnailBase64,
         categories: transformedCategories,
       });
-
-      const response = await api.put(
-        `/api/game/game-type/group-sort/${id}`,
-        formDataToSend,
-      );
 
       console.log("Update response:", response.data);
       toast.success("Game updated successfully!", {
@@ -1012,6 +1035,24 @@ export default function EditGroupSort() {
                             }
                             className="bg-gray-900/60 border-purple-500/50 focus:border-cyan-400 text-cyan-100 placeholder-purple-400/60 font-mono tracking-wide"
                           />
+                          {item.image && (
+                            <div className="flex items-center gap-3 p-2 border border-purple-500/30 rounded-lg bg-gray-900/20">
+                              <div className="size-12 rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0">
+                                <img
+                                  src={
+                                    item.image.startsWith("http")
+                                      ? item.image
+                                      : `${import.meta.env.VITE_API_URL}/${item.image}`
+                                  }
+                                  alt="Item Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 text-xs truncate text-cyan-300 font-mono">
+                                {item.image.split("/").pop()}
+                              </div>
+                            </div>
+                          )}
                           <div className="relative">
                             <Input
                               placeholder="Hint (optional)"

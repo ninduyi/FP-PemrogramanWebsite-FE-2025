@@ -54,9 +54,11 @@ function CreateGroupSort() {
   const CyberpunkDropzone = ({
     onChange,
     value,
+    showPreview = true,
   }: {
     onChange: (file: File | null) => void;
     value?: File | null;
+    showPreview?: boolean;
   }) => {
     const [preview, setPreview] = useState<string | null>(null);
 
@@ -79,24 +81,33 @@ function CreateGroupSort() {
       <div className="w-full space-y-3">
         <FileUpload.Root
           value={value ? [value] : []}
-          onValueChange={handleFileChange}
+          onValueChange={(files) => handleFileChange(files)}
           maxFiles={1}
           maxSize={5 * 1024 * 1024}
           className="w-full"
+          accept="image/png,image/jpeg"
         >
           {!preview && (
-            <FileUpload.Dropzone className="p-6 border-2 border-dashed border-purple-500/50 rounded-xl flex flex-col items-center text-center gap-3 bg-gray-900/30 hover:border-cyan-400/50 hover:bg-gray-900/40 transition-all duration-300">
-              <Upload className="size-8 text-cyan-400" />
-              <div className="text-sm font-mono text-cyan-300">
+            <FileUpload.Dropzone
+              className={`p-6 border-2 border-dashed border-purple-500/50 rounded-xl flex flex-col items-center text-center gap-3 bg-gray-900/30 hover:border-cyan-400/50 hover:bg-gray-900/40 transition-all duration-300 ${showPreview ? "" : "p-3"}`}
+            >
+              <Upload
+                className={`${showPreview ? "size-8" : "size-6"} text-cyan-400`}
+              />
+              <div
+                className={`${showPreview ? "text-sm" : "text-xs"} font-mono text-cyan-300`}
+              >
                 Drag or click to upload
               </div>
-              <div className="text-xs text-purple-400">
+              <div
+                className={`${showPreview ? "text-xs" : "text-[10px]"} text-purple-400`}
+              >
                 Max 5MB — PNG, JPEG only
               </div>
               <FileUpload.Trigger asChild>
                 <Button
-                  size="sm"
-                  className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
+                  size={showPreview ? "sm" : "sm"}
+                  className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono text-xs"
                 >
                   Choose File
                 </Button>
@@ -104,17 +115,23 @@ function CreateGroupSort() {
             </FileUpload.Dropzone>
           )}
 
-          {preview && value && (
-            <div className="flex items-center gap-3 p-3 border border-purple-500/30 rounded-lg bg-gray-900/30 backdrop-blur-sm">
-              <div className="size-16 rounded-lg overflow-hidden border-2 border-cyan-400/50">
+          {preview && (
+            <div
+              className={`flex items-center gap-3 p-3 border border-purple-500/30 rounded-lg bg-gray-900/30 backdrop-blur-sm ${showPreview ? "" : ""}`}
+            >
+              <div
+                className={`${showPreview ? "size-16" : "size-12"} rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0`}
+              >
                 <img
                   src={preview}
                   alt="Preview"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="flex-1 text-sm truncate text-cyan-300 font-mono">
-                {value.name}
+              <div
+                className={`flex-1 text-sm truncate text-cyan-300 font-mono ${showPreview ? "text-sm" : "text-xs"}`}
+              >
+                {value?.name || "Thumbnail"}
               </div>
               <Button
                 size="icon"
@@ -471,65 +488,55 @@ function CreateGroupSort() {
     return true;
   };
 
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      const formData = new FormData();
-
-      // Basic fields
-      formData.append("name", name);
-      formData.append("description", description);
-      formData.append("time_limit", (timeLimit || 60).toString());
-      formData.append("score_per_item", (scorePerItem || 1).toString());
-      formData.append(
-        "is_category_randomized",
-        isCategoryRandomized.toString(),
-      );
-      formData.append("is_item_randomized", isItemRandomized.toString());
-      formData.append(
-        "is_publish_immediately",
-        isPublishImmediately.toString(),
-      );
-
+      // Convert thumbnail to base64 if present
+      let thumbnailBase64: string | null = null;
       if (thumbnail) {
-        formData.append("thumbnail_image", thumbnail);
+        thumbnailBase64 = await fileToBase64(thumbnail);
       }
 
-      // Build files_to_upload array and track indices
-      const filesArray: File[] = [];
-      const categoriesData = categories.map((cat) => ({
-        category_name: cat.name,
-        items: cat.items.map((item) => {
-          if (item.image) {
-            const imageIndex = filesArray.length;
-            filesArray.push(item.image);
-            return {
+      // Convert all item images to base64
+      const categoriesData = await Promise.all(
+        categories.map(async (cat) => ({
+          category_name: cat.name,
+          items: await Promise.all(
+            cat.items.map(async (item) => ({
               item_text: item.text,
-              item_image_array_index: imageIndex,
+              item_image: item.image ? await fileToBase64(item.image) : null,
               item_hint: item.hint || null,
-            };
-          }
-          return {
-            item_text: item.text,
-            item_hint: item.hint || null,
-          };
-        }),
-      }));
+            })),
+          ),
+        })),
+      );
 
-      formData.append("categories", JSON.stringify(categoriesData));
-
-      // Append all files
-      filesArray.forEach((file) => {
-        formData.append("files_to_upload", file);
-      });
-
+      // Send as JSON with base64 encoded images
       await api
-        .post("/api/game/game-type/group-sort", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        .post("/api/game/game-type/group-sort", {
+          name,
+          description,
+          time_limit: timeLimit || 60,
+          score_per_item: scorePerItem || 1,
+          is_category_randomized: isCategoryRandomized.toString(),
+          is_item_randomized: isItemRandomized.toString(),
+          is_publish_immediately: isPublishImmediately.toString(),
+          thumbnail_image: thumbnailBase64,
+          categories: categoriesData,
         })
         .then(() => {
           toast.success("Group Sort game created successfully!", {
@@ -992,17 +999,18 @@ function CreateGroupSort() {
                             }
                             className="bg-gray-900/60 border-purple-500/50 focus:border-cyan-400 text-cyan-100 placeholder-purple-400/60 font-mono tracking-wide"
                           />
-                          <div className="border border-dashed border-purple-400/30 rounded p-2 hover:border-cyan-400/50 transition-colors">
+                          <div className="border-2 border-dashed border-purple-500/50 rounded-xl p-4 hover:border-cyan-400/50 transition-colors">
                             <CyberpunkDropzone
                               onChange={(file) =>
                                 updateItemImage(catIdx, itemIdx, file)
                               }
                               value={item.image}
+                              showPreview={true}
                             />
                           </div>
                           {item.image && (
-                            <div className="text-xs text-purple-300 bg-purple-900/20 px-2 py-1 rounded">
-                              <span className="text-cyan-400">Image:</span>{" "}
+                            <div className="text-sm text-purple-300 bg-purple-900/20 px-3 py-2 rounded border-l-2 border-cyan-400">
+                              <span className="text-cyan-400">Selected:</span>{" "}
                               {item.image.name}
                             </div>
                           )}
