@@ -36,6 +36,10 @@ import WhackAMoleGame from "./pages/whack-a-mole";
 import CreateWhackAMole from "./pages/whack-a-mole/create";
 import EditWhackAMole from "./pages/whack-a-mole/edit";
 
+import GroupSort from "./pages/group-sort/GroupSort";
+import CreateGroupSort from "./pages/group-sort/CreateGroupSort";
+import EditGroupSort from "./pages/group-sort/EditGroupSort";
+
 function App() {
   return (
     <>
@@ -58,6 +62,7 @@ function App() {
           path="/sliding-puzzle/play/:id"
           element={<PlaySlidingPuzzle />}
         />
+        <Route path="/group-sort/play/:id" element={<GroupSort />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
@@ -103,6 +108,8 @@ function App() {
             path="/sliding-puzzle/edit/:id"
             element={<EditSlidingPuzzle />}
           />
+          <Route path="/create-group-sort" element={<CreateGroupSort />} />
+          <Route path="/group-sort/edit/:id" element={<EditGroupSort />} />
         </Route>
       </Routes>
     </>
