@@ -50,6 +50,16 @@ interface EditGroupSortGame {
   is_published: boolean;
 }
 
+// Utility function to convert File to base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 export default function EditGroupSort() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -449,28 +459,29 @@ export default function EditGroupSort() {
     try {
       setSaving(true);
 
-      // Collect new item image files
-      const newItemImageFiles: File[] = [];
       const transformedCategories = categories.map((cat) => ({
         category_name: cat.name,
         items: cat.items.map((item) => {
           // Handle item image:
-          // - If it's a File object, it's a new upload - add to files array and use index
-          // - If it's a string, it's existing image path - preserve it
+          // - If it's a base64 string (data:image/...), keep it as is for JSON
+          // - If it's a File object, convert to base64 and keep as string
+          // - If it's a regular string path, keep it as is (existing image)
           let itemImageData: number | string | undefined;
 
-          if (item.image && typeof item.image !== "string") {
-            // New file upload (File object)
-            itemImageData = newItemImageFiles.length;
-            newItemImageFiles.push(item.image as File);
+          if (item.image && item.image.startsWith("data:")) {
+            // Already base64 - keep as string
+            itemImageData = item.image;
           } else if (typeof item.image === "string") {
-            // Existing image - preserve by passing the path as string
+            // Existing image path - preserve it
             itemImageData = item.image;
           }
+          // If no image, itemImageData stays undefined
 
           return {
             item_text: item.text,
-            item_image_array_index: itemImageData,
+            ...(itemImageData !== undefined && {
+              item_image_array_index: itemImageData,
+            }),
             item_hint: item.hint || null,
           };
         }),
@@ -491,10 +502,7 @@ export default function EditGroupSort() {
         JSON.stringify(transformedCategories),
       );
 
-      // Add new item image files to form data
-      newItemImageFiles.forEach((file) => {
-        formDataToSend.append("files_to_upload", file);
-      });
+      // No need to append file objects since base64 is embedded in JSON
 
       if (thumbnail) {
         formDataToSend.append("thumbnail_image", thumbnail);
@@ -1002,86 +1010,226 @@ export default function EditGroupSort() {
                             className="bg-gray-900/60 border-purple-500/50 focus:border-cyan-400 text-cyan-100 placeholder-purple-400/60 font-mono tracking-wide"
                           />
 
-                          {item.image && (
-                            <div className="flex items-center gap-3 p-2 border border-purple-500/30 rounded-lg bg-gray-900/20">
-                              <div className="size-12 rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0">
-                                <img
-                                  src={
-                                    typeof item.image === "string"
-                                      ? item.image.startsWith("http")
-                                        ? item.image
-                                        : `${import.meta.env.VITE_API_URL}/${item.image}`
-                                      : URL.createObjectURL(item.image as File)
-                                  }
-                                  alt="Item Preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <div className="flex-1 text-xs truncate text-cyan-300 font-mono">
-                                {typeof item.image === "string"
-                                  ? item.image.split("/").pop()
-                                  : (item.image as File).name}
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setCategories((prev) =>
-                                    prev.map((cat) =>
-                                      cat.id === category.id
-                                        ? {
-                                            ...cat,
-                                            items: cat.items.map((itm) =>
-                                              itm.id === item.id
-                                                ? { ...itm, image: null }
-                                                : itm,
+                          <div className="border border-dashed border-purple-400/30 rounded p-2 hover:border-cyan-400/50 transition-colors">
+                            <div className="w-full space-y-3">
+                              {!item.image ? (
+                                <div
+                                  className="p-4 border-2 border-dashed border-purple-500/50 rounded-lg flex flex-col items-center text-center gap-3 bg-gray-900/30 hover:border-cyan-400/50 hover:bg-gray-900/40 transition-all duration-300 cursor-pointer"
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add(
+                                      "border-cyan-400/50",
+                                      "bg-cyan-500/5",
+                                    );
+                                  }}
+                                  onDragLeave={(e) => {
+                                    e.currentTarget.classList.remove(
+                                      "border-cyan-400/50",
+                                      "bg-cyan-500/5",
+                                    );
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.remove(
+                                      "border-cyan-400/50",
+                                      "bg-cyan-500/5",
+                                    );
+                                    const files = e.dataTransfer.files;
+                                    if (files?.length > 0) {
+                                      const file = files[0];
+                                      fileToBase64(file)
+                                        .then((base64) => {
+                                          setCategories((prev) =>
+                                            prev.map((cat) =>
+                                              cat.id === category.id
+                                                ? {
+                                                    ...cat,
+                                                    items: cat.items.map(
+                                                      (itm) =>
+                                                        itm.id === item.id
+                                                          ? {
+                                                              ...itm,
+                                                              image: base64,
+                                                            }
+                                                          : itm,
+                                                    ),
+                                                  }
+                                                : cat,
                                             ),
+                                          );
+                                        })
+                                        .catch((error) => {
+                                          console.error(
+                                            "Error converting file to base64:",
+                                            error,
+                                          );
+                                          toast.error(
+                                            "Error processing image file",
+                                          );
+                                        });
+                                    }
+                                  }}
+                                >
+                                  <Upload size={20} className="text-cyan-400" />
+                                  <div className="text-sm font-mono text-cyan-300">
+                                    Drag or click to upload
+                                  </div>
+                                  <div className="text-xs text-purple-400">
+                                    Max 5MB — PNG, JPEG only
+                                  </div>
+                                  <label className="cursor-pointer">
+                                    <Button
+                                      size="sm"
+                                      className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                      }}
+                                    >
+                                      Choose File
+                                    </Button>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          try {
+                                            const base64 =
+                                              await fileToBase64(file);
+                                            setCategories((prev) =>
+                                              prev.map((cat) =>
+                                                cat.id === category.id
+                                                  ? {
+                                                      ...cat,
+                                                      items: cat.items.map(
+                                                        (itm) =>
+                                                          itm.id === item.id
+                                                            ? {
+                                                                ...itm,
+                                                                image: base64,
+                                                              }
+                                                            : itm,
+                                                      ),
+                                                    }
+                                                  : cat,
+                                              ),
+                                            );
+                                          } catch (error) {
+                                            console.error(
+                                              "Error converting file to base64:",
+                                              error,
+                                            );
+                                            toast.error(
+                                              "Error processing image file",
+                                            );
                                           }
-                                        : cat,
-                                    ),
-                                  );
-                                }}
-                                className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 flex-shrink-0"
-                              >
-                                <X size={14} />
-                              </Button>
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-3 p-3 border border-purple-500/30 rounded-lg bg-gray-900/30 backdrop-blur-sm">
+                                  <div className="size-16 rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0">
+                                    <img
+                                      src={
+                                        item.image.startsWith("data:")
+                                          ? item.image
+                                          : item.image.startsWith("http")
+                                            ? item.image
+                                            : `${import.meta.env.VITE_API_URL}/${item.image}`
+                                      }
+                                      alt="Item Preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="flex-1 text-sm truncate text-cyan-300 font-mono">
+                                    {item.image.startsWith("data:")
+                                      ? "Base64 Image"
+                                      : item.image.split("/").pop()}
+                                  </div>
+                                  <div className="flex gap-2 flex-shrink-0">
+                                    <label className="cursor-pointer">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="text-purple-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                        }}
+                                      >
+                                        <Upload size={16} />
+                                      </Button>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            try {
+                                              const base64 =
+                                                await fileToBase64(file);
+                                              setCategories((prev) =>
+                                                prev.map((cat) =>
+                                                  cat.id === category.id
+                                                    ? {
+                                                        ...cat,
+                                                        items: cat.items.map(
+                                                          (itm) =>
+                                                            itm.id === item.id
+                                                              ? {
+                                                                  ...itm,
+                                                                  image: base64,
+                                                                }
+                                                              : itm,
+                                                        ),
+                                                      }
+                                                    : cat,
+                                                ),
+                                              );
+                                            } catch (error) {
+                                              console.error(
+                                                "Error converting file to base64:",
+                                                error,
+                                              );
+                                              toast.error(
+                                                "Error processing image file",
+                                              );
+                                            }
+                                          }
+                                        }}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setCategories((prev) =>
+                                          prev.map((cat) =>
+                                            cat.id === category.id
+                                              ? {
+                                                  ...cat,
+                                                  items: cat.items.map((itm) =>
+                                                    itm.id === item.id
+                                                      ? { ...itm, image: null }
+                                                      : itm,
+                                                  ),
+                                                }
+                                              : cat,
+                                          ),
+                                        );
+                                      }}
+                                      className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                                    >
+                                      <X size={16} />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-
-                          <label className="flex items-center gap-2 p-2 border border-dashed border-purple-400/50 rounded-lg bg-gray-900/20 hover:bg-purple-500/10 hover:border-purple-400 cursor-pointer transition-all duration-200 group">
-                            <Upload
-                              size={14}
-                              className="text-purple-400 group-hover:text-cyan-400"
-                            />
-                            <span className="text-xs text-purple-400 group-hover:text-cyan-400 font-mono">
-                              {item.image ? "Change Image" : "Upload Image"}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setCategories((prev) =>
-                                    prev.map((cat) =>
-                                      cat.id === category.id
-                                        ? {
-                                            ...cat,
-                                            items: cat.items.map((itm) =>
-                                              itm.id === item.id
-                                                ? { ...itm, image: file }
-                                                : itm,
-                                            ),
-                                          }
-                                        : cat,
-                                    ),
-                                  );
-                                }
-                              }}
-                              className="hidden"
-                            />
-                          </label>
+                          </div>
 
                           <div className="relative">
                             <Input
