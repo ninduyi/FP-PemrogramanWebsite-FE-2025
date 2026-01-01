@@ -1022,8 +1022,66 @@ export default function EditGroupSort() {
                                   ? item.image.split("/").pop()
                                   : (item.image as File).name}
                               </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setCategories((prev) =>
+                                    prev.map((cat) =>
+                                      cat.id === category.id
+                                        ? {
+                                            ...cat,
+                                            items: cat.items.map((itm) =>
+                                              itm.id === item.id
+                                                ? { ...itm, image: null }
+                                                : itm,
+                                            ),
+                                          }
+                                        : cat,
+                                    ),
+                                  );
+                                }}
+                                className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10 flex-shrink-0"
+                              >
+                                <X size={14} />
+                              </Button>
                             </div>
                           )}
+
+                          <label className="flex items-center gap-2 p-2 border border-dashed border-purple-400/50 rounded-lg bg-gray-900/20 hover:bg-purple-500/10 hover:border-purple-400 cursor-pointer transition-all duration-200 group">
+                            <Upload
+                              size={14}
+                              className="text-purple-400 group-hover:text-cyan-400"
+                            />
+                            <span className="text-xs text-purple-400 group-hover:text-cyan-400 font-mono">
+                              {item.image ? "Change Image" : "Upload Image"}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setCategories((prev) =>
+                                    prev.map((cat) =>
+                                      cat.id === category.id
+                                        ? {
+                                            ...cat,
+                                            items: cat.items.map((itm) =>
+                                              itm.id === item.id
+                                                ? { ...itm, image: file }
+                                                : itm,
+                                            ),
+                                          }
+                                        : cat,
+                                    ),
+                                  );
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
 
                           <div className="relative">
                             <Input
