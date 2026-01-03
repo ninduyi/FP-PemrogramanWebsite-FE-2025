@@ -36,7 +36,10 @@ export interface IUserScoreSummary {
 class ScoreAPI {
   static async submitScore(payload: ISubmitScorePayload) {
     try {
-      const response = await api.post(`/api/score/submit`, payload);
+      const response = await api.post(
+        `/api/game/game-type/group-sort/score/submit`,
+        payload,
+      );
       return response.data;
     } catch (error) {
       console.error("Failed to submit score:", error);
@@ -46,7 +49,9 @@ class ScoreAPI {
 
   static async getHighestScore(gameId: string): Promise<IGameScore | null> {
     try {
-      const response = await api.get(`/api/score/highest/${gameId}`);
+      const response = await api.get(
+        `/api/game/game-type/group-sort/score/highest/${gameId}`,
+      );
       return response.data.data;
     } catch (error) {
       console.error("Failed to get highest score:", error);
@@ -59,9 +64,12 @@ class ScoreAPI {
     limit: number = 10,
   ): Promise<IGameScore[]> {
     try {
-      const response = await api.get(`/api/score/history/${gameId}`, {
-        params: { limit },
-      });
+      const response = await api.get(
+        `/api/game/game-type/group-sort/score/history/${gameId}`,
+        {
+          params: { limit },
+        },
+      );
       return response.data.data;
     } catch (error) {
       console.error("Failed to get game history:", error);
@@ -74,9 +82,12 @@ class ScoreAPI {
     limit: number = 10,
   ): Promise<ILeaderboardEntry[]> {
     try {
-      const response = await api.get(`/api/score/leaderboard/${gameId}`, {
-        params: { limit },
-      });
+      const response = await api.get(
+        `/api/game/game-type/group-sort/score/leaderboard/${gameId}`,
+        {
+          params: { limit },
+        },
+      );
       return response.data.data;
     } catch (error) {
       console.error("Failed to get leaderboard:", error);
@@ -86,7 +97,9 @@ class ScoreAPI {
 
   static async getAllUserScores(): Promise<IUserScoreSummary[]> {
     try {
-      const response = await api.get(`/api/score/user/all-scores`);
+      const response = await api.get(
+        `/api/game/game-type/group-sort/score/user/all-scores`,
+      );
       return response.data.data;
     } catch (error) {
       console.error("Failed to get all user scores:", error);

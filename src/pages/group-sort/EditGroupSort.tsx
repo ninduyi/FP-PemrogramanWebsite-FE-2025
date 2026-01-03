@@ -23,7 +23,8 @@ import {
 interface Item {
   id: string;
   text: string;
-  image: string | null;
+  image: string | null; // URL string or null
+  imageFile?: File; // NEW: Track File object separately for new uploads
   hint?: string;
 }
 
@@ -49,16 +50,6 @@ interface EditGroupSortGame {
   game_data: GameData;
   is_published: boolean;
 }
-
-// Utility function to convert File to base64
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
 
 export default function EditGroupSort() {
   const { id } = useParams<{ id: string }>();
@@ -111,7 +102,7 @@ export default function EditGroupSort() {
 
     const handleDelete = () => {
       onChange(null);
-      setPreview(previewUrl || null);
+      setPreview(null);
     };
 
     return (
@@ -183,7 +174,12 @@ export default function EditGroupSort() {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={handleDelete}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+                type="button"
                 className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
               >
                 <X className="size-4" />
@@ -254,6 +250,10 @@ export default function EditGroupSort() {
   }, [id]);
 
   const handleThumbnailChange = (file: File | null) => {
+    console.log(
+      "📸 Thumbnail changed:",
+      file ? `${file.name} (${file.size} bytes)` : "null",
+    );
     setThumbnail(file);
     if (file) {
       const reader = new FileReader();
@@ -262,6 +262,32 @@ export default function EditGroupSort() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleItemImageChange = (
+    categoryId: string,
+    itemId: string,
+    file: File,
+  ) => {
+    const previewUrl = URL.createObjectURL(file);
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id === categoryId
+          ? {
+              ...cat,
+              items: cat.items.map((itm) =>
+                itm.id === itemId
+                  ? {
+                      ...itm,
+                      image: previewUrl,
+                      imageFile: file,
+                    }
+                  : itm,
+              ),
+            }
+          : cat,
+      ),
+    );
   };
 
   const handleCategoryNameChange = (categoryId: string, newName: string) => {
@@ -459,21 +485,48 @@ export default function EditGroupSort() {
     try {
       setSaving(true);
 
+      // Collect all new image files
+      const newImageFiles: File[] = [];
+      const imageFileIndexMap = new Map<string, number>(); // item.id -> index in newImageFiles
+
+      // Build the mapping for new images
+      categories.forEach((cat) => {
+        cat.items.forEach((item) => {
+          if (item.imageFile) {
+            // This is a new upload
+            imageFileIndexMap.set(item.id, newImageFiles.length);
+            newImageFiles.push(item.imageFile);
+          }
+        });
+      });
+
       const transformedCategories = categories.map((cat) => ({
         category_name: cat.name,
         items: cat.items.map((item) => {
-          // Handle item image:
-          // - If it's a base64 string (data:image/...), keep it as is for JSON
-          // - If it's a File object, convert to base64 and keep as string
-          // - If it's a regular string path, keep it as is (existing image)
           let itemImageData: number | string | undefined;
 
-          if (item.image && item.image.startsWith("data:")) {
-            // Already base64 - keep as string
-            itemImageData = item.image;
-          } else if (typeof item.image === "string") {
-            // Existing image path - preserve it
-            itemImageData = item.image;
+          if (item.imageFile) {
+            // New file upload - use index
+            itemImageData = imageFileIndexMap.get(item.id);
+          } else if (item.image) {
+            // Existing image - extract path from URL or use as is
+            let imagePath = item.image;
+            // If it's a full URL, extract just the path
+            if (
+              imagePath.startsWith("http://") ||
+              imagePath.startsWith("https://")
+            ) {
+              try {
+                const url = new URL(imagePath);
+                imagePath = url.pathname.substring(1); // Remove leading slash
+              } catch (e) {
+                console.error("Error parsing image URL:", e);
+              }
+            }
+            // Only include if it's not a blob URL (from local preview)
+            if (!imagePath.startsWith("blob:")) {
+              itemImageData = imagePath;
+            }
           }
           // If no image, itemImageData stays undefined
 
@@ -501,12 +554,47 @@ export default function EditGroupSort() {
         "categories",
         JSON.stringify(transformedCategories),
       );
+      formDataToSend.append("is_publish", String(game.is_published));
 
-      // No need to append file objects since base64 is embedded in JSON
-
+      // Append thumbnail if changed
       if (thumbnail) {
+        console.log(
+          "🖼️ Uploading thumbnail:",
+          thumbnail.name,
+          "Size:",
+          thumbnail.size,
+          "Type:",
+          thumbnail.type,
+        );
         formDataToSend.append("thumbnail_image", thumbnail);
+      } else {
+        console.log("⚠️ No thumbnail to upload - using existing");
       }
+
+      // Append all new item images
+      newImageFiles.forEach((file) => {
+        console.log(
+          "Adding file:",
+          file.name,
+          "Size:",
+          file.size,
+          "Type:",
+          file.type,
+        );
+        formDataToSend.append("files_to_upload", file);
+      });
+
+      // Debug log
+      console.log("Sending data:", {
+        categoriesJSON: JSON.parse(JSON.stringify(transformedCategories)),
+        newImageFilesCount: newImageFiles.length,
+        newImageFilesDetails: newImageFiles.map((f) => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+        })),
+        hasThumbnail: !!thumbnail,
+      });
 
       const response = await api.patch(
         `/api/game/game-type/group-sort/${id}`,
@@ -532,7 +620,9 @@ export default function EditGroupSort() {
           secondary: "#0a2e0a",
         },
       });
-      navigate("/my-projects");
+
+      // Force reload to clear cache and show updated data
+      window.location.href = "/my-projects";
     } catch (err: unknown) {
       console.error("Failed to save game:", err);
       console.error(
@@ -1037,36 +1127,11 @@ export default function EditGroupSort() {
                                     const files = e.dataTransfer.files;
                                     if (files?.length > 0) {
                                       const file = files[0];
-                                      fileToBase64(file)
-                                        .then((base64) => {
-                                          setCategories((prev) =>
-                                            prev.map((cat) =>
-                                              cat.id === category.id
-                                                ? {
-                                                    ...cat,
-                                                    items: cat.items.map(
-                                                      (itm) =>
-                                                        itm.id === item.id
-                                                          ? {
-                                                              ...itm,
-                                                              image: base64,
-                                                            }
-                                                          : itm,
-                                                    ),
-                                                  }
-                                                : cat,
-                                            ),
-                                          );
-                                        })
-                                        .catch((error) => {
-                                          console.error(
-                                            "Error converting file to base64:",
-                                            error,
-                                          );
-                                          toast.error(
-                                            "Error processing image file",
-                                          );
-                                        });
+                                      handleItemImageChange(
+                                        category.id,
+                                        item.id,
+                                        file,
+                                      );
                                     }
                                   }}
                                 >
@@ -1080,49 +1145,23 @@ export default function EditGroupSort() {
                                   <label className="cursor-pointer">
                                     <Button
                                       size="sm"
+                                      type="button"
+                                      asChild
                                       className="bg-linear-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-300 font-mono"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                      }}
                                     >
-                                      Choose File
+                                      <span>Choose File</span>
                                     </Button>
                                     <input
                                       type="file"
                                       accept="image/*"
-                                      onChange={async (e) => {
+                                      onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
-                                          try {
-                                            const base64 =
-                                              await fileToBase64(file);
-                                            setCategories((prev) =>
-                                              prev.map((cat) =>
-                                                cat.id === category.id
-                                                  ? {
-                                                      ...cat,
-                                                      items: cat.items.map(
-                                                        (itm) =>
-                                                          itm.id === item.id
-                                                            ? {
-                                                                ...itm,
-                                                                image: base64,
-                                                              }
-                                                            : itm,
-                                                      ),
-                                                    }
-                                                  : cat,
-                                              ),
-                                            );
-                                          } catch (error) {
-                                            console.error(
-                                              "Error converting file to base64:",
-                                              error,
-                                            );
-                                            toast.error(
-                                              "Error processing image file",
-                                            );
-                                          }
+                                          handleItemImageChange(
+                                            category.id,
+                                            item.id,
+                                            file,
+                                          );
                                         }
                                       }}
                                       className="hidden"
@@ -1134,20 +1173,22 @@ export default function EditGroupSort() {
                                   <div className="size-16 rounded-lg overflow-hidden border-2 border-cyan-400/50 flex-shrink-0">
                                     <img
                                       src={
-                                        item.image.startsWith("data:")
+                                        item.image.startsWith("blob:") ||
+                                        item.image.startsWith("data:") ||
+                                        item.image.startsWith("http")
                                           ? item.image
-                                          : item.image.startsWith("http")
-                                            ? item.image
-                                            : `${import.meta.env.VITE_API_URL}/${item.image}`
+                                          : `${import.meta.env.VITE_API_URL}/${item.image}`
                                       }
                                       alt="Item Preview"
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div className="flex-1 text-sm truncate text-cyan-300 font-mono">
-                                    {item.image.startsWith("data:")
-                                      ? "Base64 Image"
-                                      : item.image.split("/").pop()}
+                                    {item.imageFile
+                                      ? item.imageFile.name
+                                      : item.image.startsWith("data:")
+                                        ? "Base64 Image"
+                                        : item.image.split("/").pop()}
                                   </div>
                                   <div className="flex gap-2 flex-shrink-0">
                                     <label className="cursor-pointer">
@@ -1164,39 +1205,14 @@ export default function EditGroupSort() {
                                       <input
                                         type="file"
                                         accept="image/*"
-                                        onChange={async (e) => {
+                                        onChange={(e) => {
                                           const file = e.target.files?.[0];
                                           if (file) {
-                                            try {
-                                              const base64 =
-                                                await fileToBase64(file);
-                                              setCategories((prev) =>
-                                                prev.map((cat) =>
-                                                  cat.id === category.id
-                                                    ? {
-                                                        ...cat,
-                                                        items: cat.items.map(
-                                                          (itm) =>
-                                                            itm.id === item.id
-                                                              ? {
-                                                                  ...itm,
-                                                                  image: base64,
-                                                                }
-                                                              : itm,
-                                                        ),
-                                                      }
-                                                    : cat,
-                                                ),
-                                              );
-                                            } catch (error) {
-                                              console.error(
-                                                "Error converting file to base64:",
-                                                error,
-                                              );
-                                              toast.error(
-                                                "Error processing image file",
-                                              );
-                                            }
+                                            handleItemImageChange(
+                                              category.id,
+                                              item.id,
+                                              file,
+                                            );
                                           }
                                         }}
                                         className="hidden"
@@ -1205,7 +1221,9 @@ export default function EditGroupSort() {
                                     <Button
                                       size="icon"
                                       variant="ghost"
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         setCategories((prev) =>
                                           prev.map((cat) =>
                                             cat.id === category.id
@@ -1213,7 +1231,11 @@ export default function EditGroupSort() {
                                                   ...cat,
                                                   items: cat.items.map((itm) =>
                                                     itm.id === item.id
-                                                      ? { ...itm, image: null }
+                                                      ? {
+                                                          ...itm,
+                                                          image: null,
+                                                          imageFile: undefined,
+                                                        }
                                                       : itm,
                                                   ),
                                                 }
@@ -1221,6 +1243,7 @@ export default function EditGroupSort() {
                                           ),
                                         );
                                       }}
+                                      type="button"
                                       className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
                                     >
                                       <X size={16} />
