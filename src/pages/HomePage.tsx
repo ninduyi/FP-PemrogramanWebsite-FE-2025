@@ -225,16 +225,11 @@ export default function HomePage() {
     let imageUrl = thumbnailPlaceholder;
 
     if (game.thumbnail_image && game.thumbnail_image !== "default_image.jpg") {
-      // Check if it's base64 data URL
-      if (game.thumbnail_image.startsWith("data:")) {
+      // Cek apakah URL absolut atau relatif
+      if (game.thumbnail_image.startsWith("http")) {
         imageUrl = game.thumbnail_image;
-      }
-      // Check if it's already an absolute URL
-      else if (game.thumbnail_image.startsWith("http")) {
-        imageUrl = game.thumbnail_image;
-      }
-      // Otherwise it's a relative path, add Base URL
-      else {
+      } else {
+        // Jika relatif (uploads/...), tambahkan URL Backend
         imageUrl = `${import.meta.env.VITE_API_URL}/${game.thumbnail_image}`;
       }
     }

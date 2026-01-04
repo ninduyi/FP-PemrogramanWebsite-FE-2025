@@ -141,16 +141,10 @@ export default function MyProjectsPage() {
           project.thumbnail_image &&
           project.thumbnail_image !== "default_image.jpg"
         ) {
-          // Check if it's base64 data URL
-          if (project.thumbnail_image.startsWith("data:")) {
+          if (project.thumbnail_image.startsWith("http")) {
             imageUrl = project.thumbnail_image;
-          }
-          // Check if it's already an absolute URL
-          else if (project.thumbnail_image.startsWith("http")) {
-            imageUrl = project.thumbnail_image;
-          }
-          // Otherwise it's a relative path, add Base URL
-          else {
+          } else {
+            // Tambahkan Base URL jika path lokal
             imageUrl = `${import.meta.env.VITE_API_URL}/${project.thumbnail_image}`;
           }
         }
